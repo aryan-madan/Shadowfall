@@ -1,30 +1,19 @@
-
 import React, { useEffect } from 'react';
 
-interface SystemFailureScreenProps {
+interface CrashScreenProps {
   onReset: () => void;
 }
 
-const SystemFailureScreen: React.FC<SystemFailureScreenProps> = ({ onReset }) => {
+const CrashScreen: React.FC<CrashScreenProps> = ({ onReset }) => {
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onReset();
-    }, 5000);
-
+    const timer = setTimeout(onReset, 5000);
     return () => clearTimeout(timer);
   }, [onReset]);
 
   return (
-    <div 
-        className="fixed inset-0 bg-black z-[20000] flex flex-col items-center justify-center text-red-500"
-        style={{ animation: 'screen-jump 0.5s infinite' }}
-    >
+    <div className="fixed inset-0 bg-black z-[20000] flex flex-col items-center justify-center text-red-500" style={{ animation: 'crash-jump 0.5s infinite' }}>
       <div className="text-center">
-        <h1 
-          className="text-9xl font-bold glitch"
-          data-text="SYSTEM FAILURE"
-          style={{ animation: 'flicker-red 1.5s infinite alternate' }}
-        >
+        <h1 className="text-9xl font-bold glitch" data-text="SYSTEM FAILURE" style={{ animation: 'crash-flicker 1.5s infinite alternate' }}>
           SYSTEM FAILURE
         </h1>
         <p className="text-4xl mt-4">KERNEL PANIC: CORE INTEGRITY COMPROMISED</p>
@@ -34,4 +23,4 @@ const SystemFailureScreen: React.FC<SystemFailureScreenProps> = ({ onReset }) =>
   );
 };
 
-export default SystemFailureScreen;
+export default CrashScreen;

@@ -1,8 +1,10 @@
 
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { AppContentProps, ConversationChoice } from '../types';
-import { BROWSER_APP_IMAGES, GALLERY_APP_IMAGES, EVIDENCE_VIEWER_IMAGES, playSound } from '../assets';
+// FIX: Changed ConversationChoice to DialogueChoice to match exported type from types.ts
+import { AppContentProps, DialogueChoice } from '../types';
+// FIX: Corrected imported asset names to match exports from assets.ts
+import { BROWSER_IMAGES, GALLERY_IMAGES, EVIDENCE_IMAGES, playSound } from '../assets';
 
 export interface LocationDefinition {
   id: string;
@@ -18,14 +20,13 @@ export const ALL_LOCATIONS: Record<string, LocationDefinition> = {
   'world_map': { id: 'world_map', name: 'World Map', description: 'A central hub for navigating to different mission locations.', sceneType: 'hub', coords: { x: 0, y: 0}, unlockedAt: 1},
   'warehouse_b7': { id: 'warehouse_b7', name: 'Derelict Warehouse B7', description: 'An abandoned shipping warehouse at the Port of Baltimore. Potential dead-drop location.', sceneType: 'warehouse', coords: { x: 26, y: 41 }, unlockedAt: 1.1 },
   'tokyo_cyber_cafe': { id: 'tokyo_cyber_cafe', name: 'Net-Dive Cyber Cafe', description: 'An underground internet cafe in Akihabara, Tokyo. Known haunt for information brokers.', sceneType: 'cafe', coords: { x: 84, y: 42 }, unlockedAt: 2.1 },
-  'data_center_europa': { id: 'data_center_europa', name: 'Europa Data Center', description: 'A major internet exchange point. Suspected node for Void\'s network. Frankfurt, Germany.', sceneType: null, coords: { x: 51.5, y: 34 }, unlockedAt: 3 },
 };
 
 export const ALL_CASES = [
   { id: 'CYB-001', title: 'Project Shadowfall', status: 'Active', summary: 'Investigating a series of cyberattacks against federal financial institutions. Traces point to a sophisticated actor known as "Void".', details: 'Initial breach vector identified as a zero-day exploit in enterprise VPN software. Data exfiltration focused on sensitive economic forecasts. Team is currently analyzing malware samples for attribution.' },
   { id: 'CYB-002', title: "Void's Origin", status: 'Locked', summary: 'A fragmented data packet recovered from a derelict warehouse terminal. Contains early writings and code snippets from "Void".', details: 'DATA FRAGMENT 1:\n"...they built this digital world as a cage. They control the flow of information, the very thoughts we are allowed to have. They call us criminals for seeking knowledge, for wanting to be free. But who is the real criminal? The one who opens a locked door, or the one who built the prison?\n\nThey took everything from me. My research, my name. They buried me in a digital grave. But they forgot one thing... ghosts can haunt the machine."\n\nANALYSIS: Subject displays a deep-seated grudge against a corporate or government entity. Suggests a personal motive beyond financial gain.', unlockedAt: 2 },
-  { id: 'CYB-003', title: "The Puppeteer's Network", status: 'Locked', summary: 'Data recovered from a Tokyo cyber cafe reveals a complex network topology. Void is using a distributed network to mask their true location.', details: 'DATA FRAGMENT 2:\n"This is my web. Each node a puppet, dancing on my strings. They chase my shadows across the globe, never realizing I am the one pulling."\n\n[ FURTHER DATA ENCRYPTED - REQUIRES FIREWALL BREACH ]', encryptedDetails: 'The network\'s central hub appears to be located in Europe. The reference to "their own backyard" combined with network traffic analysis points towards a major data hub in Frankfurt, Germany. Recommending field operation to investigate Europa Data Center.', isEncrypted: true, unlockedAt: 3 },
-  { id: 'CYB-004', title: 'The Ghost Protocol', status: 'Locked - CRITICAL', summary: 'Final message from Void. A choice must be made.', details: '[ REQUIRES DIRECT ACCESS - DATA_CENTER_EUROPA ]', encryptedDetails: 'AGENT 77. YOU\'VE MADE IT. YOU\'VE SEEN THE TRUTH. NOW YOU HAVE A CHOICE.\n\nOPTION A: EXPOSE EVERYTHING. The corruption, the lies, the program that created me. The system will burn, but from the ashes, something new can grow. The world will know chaos, but it will be a world of truth. This is the path of sacrifice for a greater good.\n\nOPTION B: JOIN ME. Together, we can control the system from within. We can be the ghosts in the machine, manipulating events for what WE believe is right. Order will be maintained, but it will be our order. This is the path of control, of power.\n\nTHE CHOICE IS YOURS. THE PROTOCOL IS IN YOUR HANDS. WHAT WILL YOU SACRIFICE?', isEncrypted: true, unlockedAt: 4 },
+  { id: 'CYB-003', title: "The Puppeteer's Network", status: 'Locked', summary: 'Data recovered from a Tokyo cyber cafe reveals a complex network topology. Void is using a distributed network to mask their true location.', details: 'DATA FRAGMENT 2:\n"This is my web. Each node a puppet, dancing on my strings. They chase my shadows across the globe, never realizing I am the one pulling."\n\n[ FURTHER DATA ENCRYPTED - REQUIRES FIREWALL BREACH ]', encryptedDetails: "The network's central hub is well-hidden. With this decryption, the final protocol is now accessible in case file CYB-004. A final sacrifice will be required.", isEncrypted: true, unlockedAt: 3 },
+  { id: 'CYB-004', title: 'The Ghost Protocol', status: 'Locked - CRITICAL', summary: 'Final message from Void. A choice must be made.', details: "You have reached the core of Void's network. The final protocol is protected by one last layer of security. To proceed, you must sacrifice a core component of your OS, permanently.", encryptedDetails: 'AGENT 77. YOU\'VE MADE IT. YOU\'VE SEEN THE TRUTH. NOW YOU HAVE A CHOICE.\n\nOPTION A: EXPOSE EVERYTHING. The corruption, the lies, the program that created me. The system will burn, but from the ashes, something new can grow. The world will know chaos, but it will be a world of truth. This is the path of sacrifice for a greater good.\n\nOPTION B: JOIN ME. Together, we can control the system from within. We can be the ghosts in the machine, manipulating events for what WE believe is right. Order will be maintained, but it will be our order. This is the path of control, of power.\n\nTHE CHOICE IS YOURS. THE PROTOCOL IS IN YOUR HANDS. WHAT WILL YOU SACRIFICE?', isEncrypted: true, unlockedAt: 4 },
 ];
 
 export const ALL_MESSAGES = [
@@ -34,10 +35,11 @@ export const ALL_MESSAGES = [
     { sender: 'CONTROL', text: 'Copy that. Maintain radio silence.', timestamp: '14:33', align: 'left' },
     { sender: 'UNKNOWN', text: '...can you hear me?...', timestamp: '15:01', align: 'center', unlockedAt: 1.1, isGlitch: true },
     { sender: 'VOID', text: 'Finally. I\'ve bypassed their firewalls. We can speak freely now, Agent 77.', timestamp: '15:02', align: 'left', unlockedAt: 1.1 },
-    { conversationId: 'c0', unlockedAt: 1.1, choices: [
-        { id: 'c0a', conversationId: 'c0', text: 'Who is this? Identify yourself.', integrityChange: -5, storyProgressChange: 0.1 },
-        { id: 'c0b', conversationId: 'c0', text: 'How did you get this number?', integrityChange: 0, storyProgressChange: 0.1 },
-        { id: 'c0c', conversationId: 'c0', text: '[Say nothing and attempt to trace]', integrityChange: 5, storyProgressChange: 0.1 },
+    // FIX: Changed conversationId, integrityChange, storyProgressChange to match DialogueChoice type
+    { dialogueId: 'c0', unlockedAt: 1.1, choices: [
+        { id: 'c0a', dialogueId: 'c0', text: 'Who is this? Identify yourself.', healthChange: -5, progressChange: 0.1 },
+        { id: 'c0b', dialogueId: 'c0', text: 'How did you get this number?', healthChange: 0, progressChange: 0.1 },
+        { id: 'c0c', dialogueId: 'c0', text: '[Say nothing and attempt to trace]', healthChange: 5, progressChange: 0.1 },
     ]},
     { sender: 'VOID', text: 'Clever. But you can\'t trace a ghost.', timestamp: '15:03', align: 'left', unlockedAt: 1.2, dependsOnChoice: 'c0c' },
     { sender: 'VOID', text: 'Call me Void. I know you\'ve been looking for me. But you\'re just a pawn in their game, chasing shadows they want you to see.', timestamp: '15:03', align: 'left', unlockedAt: 1.2, dependsOnChoice: 'c0' },
@@ -45,23 +47,25 @@ export const ALL_MESSAGES = [
     { sender: 'SYSTEM', text: '*** TRACE FAILED | SOURCE UNKNOWN ***', timestamp: '15:06', align: 'center', unlockedAt: 1.2, dependsOnChoice: 'c0' },
     { sender: 'VOID', text: 'So, you found my little present. A piece of my past. Does it make you question who the real villain is?', timestamp: '16:22', align: 'left', unlockedAt: 2.1 },
     { sender: 'VOID', text: 'They watch you, you know. Every command you type. Every file you open. They see your system integrity dropping and they do nothing. What kind of sacrifice are they willing to make? You.', timestamp: '16:23', align: 'left', unlockedAt: 2.1 },
-    { conversationId: 'c1', unlockedAt: 2.1, choices: [
-        { id: 'c1a', conversationId: 'c1', text: '[REMAIN SILENT]', integrityChange: 5, storyProgressChange: 0.1 },
-        { id: 'c1b', conversationId: 'c1', text: 'You\'re just a terrorist.', integrityChange: -10, storyProgressChange: 0.1 },
-        { id: 'c1c', conversationId: 'c1', text: 'Who are "they"?', integrityChange: -5, storyProgressChange: 0.1 },
+    // FIX: Changed conversationId, integrityChange, storyProgressChange to match DialogueChoice type
+    { dialogueId: 'c1', unlockedAt: 2.1, choices: [
+        { id: 'c1a', dialogueId: 'c1', text: '[REMAIN SILENT]', healthChange: 5, progressChange: 0.1 },
+        { id: 'c1b', dialogueId: 'c1', text: 'You\'re just a terrorist.', healthChange: -10, progressChange: 0.1 },
+        { id: 'c1c', dialogueId: 'c1', text: 'Who are "they"?', healthChange: -5, progressChange: 0.1 },
     ]},
     { sender: 'VOID', text: 'More breadcrumbs await where the sun rises. Look for the Net-Dive. Your move, Agent. - V', timestamp: '16:25', align: 'left', unlockedAt: 2.2, dependsOnChoice: 'c1' },
     { sender: 'VOID', text: 'Persistent. But you\'re still missing the picture. Every truth is just a deeper lie. They lied to you. They lied about me.', timestamp: '18:15', align: 'left', unlockedAt: 3 },
     { sender: 'VOID', text: 'Do you ever wonder what sacrifices were made to give you this comfortable life? This job? This sense of purpose? Ask yourself: are you the hero, or just the weapon?', timestamp: '18:16', align: 'left', unlockedAt: 3 },
-     { conversationId: 'c2', unlockedAt: 3, choices: [
-        { id: 'c2a', conversationId: 'c2', text: 'I am an FBI agent. I serve my country.', integrityChange: 0, storyProgressChange: 0.1 },
-        { id: 'c2b', conversationId: 'c2', text: 'What do you want from me?', integrityChange: -5, storyProgressChange: 0.1 },
-        { id: 'c2c', conversationId: 'c2', text: 'I\'m starting to understand.', integrityChange: 10, storyProgressChange: 0.1 },
+     // FIX: Changed conversationId, integrityChange, storyProgressChange to match DialogueChoice type
+     { dialogueId: 'c2', unlockedAt: 3, choices: [
+        { id: 'c2a', dialogueId: 'c2', text: 'I am an FBI agent. I serve my country.', healthChange: 0, progressChange: 0.1 },
+        { id: 'c2b', dialogueId: 'c2', text: 'What do you want from me?', healthChange: -5, progressChange: 0.1 },
+        { id: 'c2c', dialogueId: 'c2', text: 'I\'m starting to understand.', healthChange: 10, progressChange: 0.1 },
     ]},
-    { sender: 'VOID', text: 'The final piece is close to home. Their home. Find me in the heart of the machine: data_center_europa', timestamp: '18:18', align: 'left', unlockedAt: 3.1, dependsOnChoice: 'c2' },
+    { sender: 'VOID', text: 'The final piece is within your grasp. Access your case files. The heart of the machine awaits your sacrifice.', timestamp: '18:18', align: 'left', unlockedAt: 3.1, dependsOnChoice: 'c2' },
 ] as const;
 
-export const CaseFilesApp: React.FC<AppContentProps> = ({ storyProgress: story = 0, onRiskyAction: risk }) => {
+export const CaseFilesApp: React.FC<AppContentProps> = ({ story: story = 0, onPerformRiskyAction: risk }) => {
   const files = useMemo(() => {
     return ALL_CASES.filter(f => !f.unlockedAt || story >= f.unlockedAt);
   }, [story]);
@@ -75,7 +79,7 @@ export const CaseFilesApp: React.FC<AppContentProps> = ({ storyProgress: story =
     if (!risk) return;
     setText(p => ({...p, [id]: 'DECRYPTING...'}));
     setTimeout(() => {
-        const ok = risk({ successChance: 0.65, integrityCostSuccess: 5, integrityCostFailure: 15 });
+        const ok = risk({ chanceOfSuccess: 0.65, healthCostOnSuccess: 5, healthCostOnFailure: 15 });
         playSound(ok ? 'decryption_success' : 'decryption_fail');
         if (ok) {
             setKeys(p => ({ ...p, [id]: true }));
@@ -142,7 +146,7 @@ export const CaseFilesApp: React.FC<AppContentProps> = ({ storyProgress: story =
   );
 };
 
-export const TerminalApp: React.FC<AppContentProps> = ({ storyProgress: story = 0, onRiskyAction: risk, systemIntegrity: health, onRepairSystem: fix, onAdvanceStory: next }) => {
+export const TerminalApp: React.FC<AppContentProps> = ({ story: story = 0, onPerformRiskyAction: risk, sysHealth: health, onRepairSystem: fix, onAdvanceStory: next }) => {
   const [log, setLog] = useState<string[]>(['FBI Secure Terminal v3.1.4', 'Type "help" for a list of commands.']);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -182,7 +186,7 @@ export const TerminalApp: React.FC<AppContentProps> = ({ storyProgress: story = 
         setBusy(true);
         add(['Attempting firewall breach on target: firewall_europa...', 'Sacrificing system resources for elevated privileges...']);
         setTimeout(() => {
-            const ok = risk({ successChance: 0.5, integrityCostFailure: 25, integrityCostSuccess: 15 });
+            const ok = risk({ chanceOfSuccess: 0.5, healthCostOnFailure: 25, healthCostOnSuccess: 15 });
             if (ok) {
                 add(['>> BREACH SUCCESSFUL. Root access gained. Unlocking final case file...']);
                 setLog(p => [...p, '> Access CYB-004 for final instructions.']);
@@ -244,12 +248,12 @@ export const TerminalApp: React.FC<AppContentProps> = ({ storyProgress: story = 
 };
 
 const evidence = [
-  { id: 'EV-001', type: 'image', title: 'Satellite Imagery - Compound', url: EVIDENCE_VIEWER_IMAGES.ev001 },
-  { id: 'EV-002', type: 'image', title: 'Recovered Hard Drive', url: EVIDENCE_VIEWER_IMAGES.ev002 },
-  { id: 'EV-003', type: 'image', title: 'CCTV - Suspect Vehicle', url: EVIDENCE_VIEWER_IMAGES.ev003 },
-  { id: 'EV-004', type: 'image', title: 'Crime Scene Photo A', url: EVIDENCE_VIEWER_IMAGES.ev004 },
-  { id: 'EV-005', type: 'image', title: 'Decrypted File Fragment', url: EVIDENCE_VIEWER_IMAGES.ev005 },
-  { id: 'EV-006', type: 'image', title: 'Facial Recognition Match', url: EVIDENCE_VIEWER_IMAGES.ev006 },
+  { id: 'EV-001', type: 'image', title: 'Satellite Imagery - Compound', url: EVIDENCE_IMAGES.ev001 },
+  { id: 'EV-002', type: 'image', title: 'Recovered Hard Drive', url: EVIDENCE_IMAGES.ev002 },
+  { id: 'EV-003', type: 'image', title: 'CCTV - Suspect Vehicle', url: EVIDENCE_IMAGES.ev003 },
+  { id: 'EV-004', type: 'image', title: 'Crime Scene Photo A', url: EVIDENCE_IMAGES.ev004 },
+  { id: 'EV-005', type: 'image', title: 'Decrypted File Fragment', url: EVIDENCE_IMAGES.ev005 },
+  { id: 'EV-006', type: 'image', title: 'Facial Recognition Match', url: EVIDENCE_IMAGES.ev006 },
 ];
 
 export const EvidenceViewerApp: React.FC = () => {
@@ -269,7 +273,7 @@ export const EvidenceViewerApp: React.FC = () => {
           </ul>
         </div>
         <div className="w-3/4 p-4 flex items-center justify-center bg-black">
-          {item && (<img src={item.url} alt={item.title} className="max-w-full max-h-full object-contain pixelated"/>)}
+          {item && (<img src={item.url} alt={item.title} className="max-w-full max-h-full object-contain"/>)}
         </div>
       </div>
       <div className="h-12 bg-slate-800 border-t border-cyan-700/50 flex items-center px-4 text-lg">
@@ -301,8 +305,10 @@ const Bubble: React.FC<Message> = ({ sender, text, timestamp, align, isGlitch })
     );
 };
 
-const Choices: React.FC<{options: readonly ConversationChoice[], pick: (c: ConversationChoice) => void}> = ({ options, pick }) => {
-    const handlePick = (c: ConversationChoice) => {
+// FIX: Changed ConversationChoice to DialogueChoice
+const Choices: React.FC<{options: readonly DialogueChoice[], pick: (c: DialogueChoice) => void}> = ({ options, pick }) => {
+    // FIX: Changed ConversationChoice to DialogueChoice
+    const handlePick = (c: DialogueChoice) => {
         playSound('ui_click');
         pick(c);
     }
@@ -316,23 +322,24 @@ const Choices: React.FC<{options: readonly ConversationChoice[], pick: (c: Conve
     );
 }
 
-export const SecureMessengerApp: React.FC<AppContentProps> = ({ storyProgress: story = 0, madeChoices: past = {}, onChoice: pick }) => {
+export const SecureMessengerApp: React.FC<AppContentProps> = ({ story: story = 0, choices: past = {}, onChoice: pick }) => {
   const end = useRef<HTMLDivElement>(null);
   const prevChatLength = useRef(0);
 
   const chat = useMemo(() => {
-    const list: (Message | { options: readonly ConversationChoice[], conversationId: string })[] = [];
+    // FIX: Changed ConversationChoice to DialogueChoice
+    const list: (Message | { options: readonly DialogueChoice[], dialogueId: string })[] = [];
     let done = true;
     for (const i of ALL_MESSAGES) {
       if ('unlockedAt' in i && i.unlockedAt && story < i.unlockedAt) continue;
       if ('choices' in i) {
-        const picked = past[i.conversationId];
+        const picked = past[i.dialogueId];
         if (picked) {
             const option = i.choices.find(c => c.id === picked);
             if (option) list.push({ sender: 'AGENT_77', text: option.text, timestamp: '', align: 'right' });
             done = true;
         } else {
-          list.push({ options: i.choices, conversationId: i.conversationId });
+          list.push({ options: i.choices, dialogueId: i.dialogueId });
           done = false;
         }
       } else {
@@ -410,7 +417,7 @@ export const BrowserApp: React.FC = () => {
         </div>
         <div className="mt-8">
             <h3 className="text-3xl font-semibold mb-4">My Latest Trip</h3>
-            <img src={BROWSER_APP_IMAGES.trip} alt="Vacation" className="rounded-lg shadow-lg w-full pixelated" />
+            <img src={BROWSER_IMAGES.trip} alt="Vacation" className="rounded-lg shadow-lg w-full" />
             <p className="text-center text-gray-500 italic mt-2 text-lg">A beautiful view from the mountains last summer.</p>
         </div>
         <div className="mt-12 border-t pt-8">
@@ -435,9 +442,9 @@ export const CalculatorApp: React.FC = () => {
     const [prev, setPrev] = useState<string | null>(null);
     const [op, setOp] = useState<string | null>(null);
 
-    useEffect(() => { if (display === '31337') setDisplay('GHOST'); }, [display]);
+    useEffect(() => { if (display === '67') setDisplay('SIXSEVEN'); }, [display]);
 
-    const num = (n: string) => { (display === 'GHOST' || display === 'ERROR' || (display === '0' && n !== '.')) ? setDisplay(n) : setDisplay(p => p + n); };
+    const num = (n: string) => { (display === 'SIXSEVEN' || display === 'ERROR' || (display === '0' && n !== '.')) ? setDisplay(n) : setDisplay(p => p + n); };
     const oper = (o: string) => { if (prev) eq(); setPrev(display); setDisplay('0'); setOp(o); };
     const eq = () => {
         if (!op || prev === null) return;
@@ -490,12 +497,12 @@ export const CalculatorApp: React.FC = () => {
 };
 
 const pics = [
-  { id: 1, title: 'Mountain Sunrise', url: GALLERY_APP_IMAGES.photo1 },
-  { id: 2, title: 'City at Night', url: GALLERY_APP_IMAGES.photo2 },
-  { id: 3, title: '[DATA_CORRUPTED]', url: GALLERY_APP_IMAGES.corrupted },
-  { id: 4, title: 'Beach Sunset', url: GALLERY_APP_IMAGES.photo4 },
-  { id: 5, title: 'Abstract Shapes', url: GALLERY_APP_IMAGES.photo5 },
-  { id: 6, title: 'Cute Puppy', url: GALLERY_APP_IMAGES.photo6 },
+  { id: 1, title: 'Mountain Sunrise', url: GALLERY_IMAGES.photo1 },
+  { id: 2, title: 'City at Night', url: GALLERY_IMAGES.photo2 },
+  { id: 3, title: '[DATA_CORRUPTED]', url: GALLERY_IMAGES.corrupted },
+  { id: 4, title: 'Beach Sunset', url: GALLERY_IMAGES.photo4 },
+  { id: 5, title: 'Abstract Shapes', url: GALLERY_IMAGES.photo5 },
+  { id: 6, title: 'Cute Puppy', url: GALLERY_IMAGES.photo6 },
 ];
 
 export const GalleryApp: React.FC = () => {
@@ -506,10 +513,10 @@ export const GalleryApp: React.FC = () => {
         <div className="w-1/3 border-r border-gray-300 overflow-y-auto bg-white">
           <div className="p-3 bg-gray-200 border-b border-gray-300 font-bold text-gray-700">My Photos</div>
           <div className="grid grid-cols-2 gap-1 p-1">
-            {pics.map(p => (<div key={p.id} onClick={() => setPic(p)} className={`cursor-pointer border-2 ${pic.id === p.id ? 'border-blue-500' : 'border-transparent'} hover:border-blue-400`}><img src={p.url} alt={p.title} className="w-full h-full object-cover pixelated"/></div>))}
+            {pics.map(p => (<div key={p.id} onClick={() => setPic(p)} className={`cursor-pointer border-2 ${pic.id === p.id ? 'border-blue-500' : 'border-transparent'} hover:border-blue-400`}><img src={p.url} alt={p.title} className="w-full h-full object-cover"/></div>))}
           </div>
         </div>
-        <div className="w-2/3 p-4 flex items-center justify-center bg-gray-200">{pic && (<img src={pic.url} alt={pic.title} className="max-w-full max-h-full object-contain rounded-md shadow-lg pixelated"/>)}</div>
+        <div className="w-2/3 p-4 flex items-center justify-center bg-gray-200">{pic && (<img src={pic.url} alt={pic.title} className="max-w-full max-h-full object-contain rounded-md shadow-lg"/>)}</div>
       </div>
       <div className="h-10 bg-gray-200 border-t border-gray-300 flex items-center px-4 text-lg">{pic && (<p className="text-gray-800 font-semibold">Viewing: <span className="font-normal text-gray-600">{pic.title}</span></p>)}</div>
     </div>

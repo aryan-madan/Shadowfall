@@ -1,48 +1,47 @@
-
 import React from 'react';
 
-export interface RiskyActionConfig {
-  successChance: number; // 0.0 to 1.0
-  integrityCostSuccess: number;
-  integrityCostFailure: number;
+export interface RiskyAction {
+  chanceOfSuccess: number;
+  healthCostOnSuccess: number;
+  healthCostOnFailure: number;
 }
 
-export interface ConversationChoice {
+export interface DialogueChoice {
     id: string;
-    conversationId: string;
+    dialogueId: string;
     text: string;
-    integrityChange?: number;
-    storyProgressChange?: number;
+    healthChange?: number;
+    progressChange?: number;
 }
 
 export interface AppContentProps {
-  storyProgress?: number;
-  systemIntegrity?: number;
-  onFindClue?: (clueId: string) => void;
-  onRiskyAction?: (config: RiskyActionConfig) => boolean;
+  story?: number;
+  sysHealth?: number;
+  onClueFound?: (clueId: string) => void;
+  onPerformRiskyAction?: (action: RiskyAction) => boolean;
   onRepairSystem?: (amount: number) => void;
-  currentLocationId?: string;
-  madeChoices?: Record<string, string>;
-  onChoice?: (choice: ConversationChoice) => void;
+  locationId?: string;
+  choices?: Record<string, string>;
+  onChoice?: (choice: DialogueChoice) => void;
   onAdvanceStory?: (amount: number) => void;
   password?: string;
-  sacrificedSystems?: string[];
-  onSacrifice?: (systemId: string, integrityCost: number) => void;
+  disabledSystems?: string[];
+  onDisableSystem?: (systemName: string, healthCost: number) => void;
 }
 
 export interface AppDefinition {
   id: string;
   name: string;
-  icon: string; // URL to pixel art icon
-  component: React.ComponentType<AppContentProps>;
-  defaultSize?: { width: number, height: number };
+  iconUrl: string;
+  Component: React.ComponentType<AppContentProps>;
+  initialSize?: { width: number, height: number };
 }
 
 export interface WindowInstance {
   id: string;
   appId: string;
   title: string;
-  position: { x: number; y: number };
+  pos: { x: number; y: number };
   size: { width: number; height: number };
   isMinimized: boolean;
   isMaximized: boolean;
@@ -52,15 +51,15 @@ export interface WindowInstance {
 
 export type IconPositions = Record<string, { x: number; y: number }>;
 
-export type AppState = 'start_menu' | 'normal_desktop' | 'rpg' | 'fbi_desktop' | 'ending';
+export type GameScreen = 'main_menu' | 'personal_desktop' | 'game_world' | 'agent_desktop' | 'game_ending';
 
-export interface GameState {
-  appState: AppState;
-  storyProgress: number;
-  systemIntegrity: number;
-  madeChoices: Record<string, string>;
+export interface SaveFile {
+  screen: GameScreen;
+  story: number;
+  sysHealth: number;
+  choices: Record<string, string>;
   password?: string;
-  currentLocationId: string;
-  openedFbiApps?: string[];
-  sacrificedSystems?: string[];
+  locationId: string;
+  openedApps?: string[];
+  disabledSystems?: string[];
 }

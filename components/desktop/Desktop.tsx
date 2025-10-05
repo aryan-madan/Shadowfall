@@ -1,32 +1,31 @@
-
 import React from 'react';
 import { AppDefinition, IconPositions } from '../../types';
-import DesktopIcon from './Icon';
+import Icon from './Icon';
 
 interface DesktopProps {
-  onOpenApp: (appId: string) => void;
+  onOpen: (appId: string) => void;
   apps: AppDefinition[];
-  isLoggedIn: boolean;
+  isAgentDesktop: boolean;
   iconPositions: IconPositions;
 }
 
-const Desktop: React.FC<DesktopProps> = ({ onOpenApp, apps, isLoggedIn, iconPositions }) => {
+const Desktop: React.FC<DesktopProps> = ({ onOpen, apps, isAgentDesktop, iconPositions }) => {
   return (
     <>
       <div className="relative w-full h-full z-10">
         {apps.map(app => (
-          <DesktopIcon
+          <Icon
             key={app.id}
             app={app}
-            onOpen={() => onOpenApp(app.id)}
-            isLoggedIn={isLoggedIn}
-            position={iconPositions[app.id] || { x: 50, y: 50 }}
+            onOpen={() => onOpen(app.id)}
+            isAgentDesktop={isAgentDesktop}
+            pos={iconPositions[app.id] || { x: 50, y: 50 }}
           />
         ))}
       </div>
-      {isLoggedIn && (
+      {isAgentDesktop && (
         <div className="absolute top-4 right-4 text-center z-10">
-          <h1 className="text-5xl font-bold text-cyan-300 tracking-widest">[ F. B. I. VIRTUAL OS ]</h1>
+          <h1 className="text-5xl font-bold text-cyan-300 tracking-widest glitch" data-text="[ F. B. I. VIRTUAL OS ]">[ F. B. I. VIRTUAL OS ]</h1>
           <p className="text-lg text-red-500">CLASSIFIED // FOR OFFICIAL USE ONLY</p>
         </div>
       )}

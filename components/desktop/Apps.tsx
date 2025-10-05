@@ -1,117 +1,110 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { AppContentProps, ConversationChoice } from '../../types';
-import { BROWSER_APP_IMAGES, GALLERY_APP_IMAGES, EVIDENCE_VIEWER_IMAGES, playSound } from '../../assets';
+import { AppContentProps, DialogueChoice } from '../../types';
+import { BROWSER_IMAGES, GALLERY_IMAGES, EVIDENCE_IMAGES, playSound } from '../../assets';
 
-export interface LocationDefinition {
+export interface Scene {
   id: string;
   name: string;
   description: string;
-  sceneType: 'office' | 'warehouse' | 'cafe' | 'hub' | 'datacenter' | null;
-  coords: { x: number; y: number };
-  unlockedAt: number;
+  worldType: 'office' | 'warehouse' | 'cafe' | null;
+  mapCoordinates: { x: number; y: number };
+  progressRequirement: number;
 }
 
-export const ALL_LOCATIONS: Record<string, LocationDefinition> = {
-  'player_room': { id: 'player_room', name: 'My Apartment', description: 'My small apartment. The new laptop is on the desk.', sceneType: 'office', coords: { x: 25, y: 40 }, unlockedAt: 0 },
-  'world_map': { id: 'world_map', name: 'World Map', description: 'A central hub for navigating to different mission locations.', sceneType: 'hub', coords: { x: 0, y: 0}, unlockedAt: 1},
-  'warehouse_b7': { id: 'warehouse_b7', name: 'Derelict Warehouse B7', description: 'An abandoned shipping warehouse at the Port of Baltimore. Potential dead-drop location.', sceneType: 'warehouse', coords: { x: 26, y: 41 }, unlockedAt: 1.1 },
-  'tokyo_cyber_cafe': { id: 'tokyo_cyber_cafe', name: 'Net-Dive Cyber Cafe', description: 'An underground internet cafe in Akihabara, Tokyo. Known haunt for information brokers.', sceneType: 'cafe', coords: { x: 84, y: 42 }, unlockedAt: 2.1 },
-  'data_center_europa': { id: 'data_center_europa', name: 'Europa Data Center', description: 'A major internet exchange point. Suspected node for Void\'s network. Frankfurt, Germany.', sceneType: 'datacenter', coords: { x: 51.5, y: 34 }, unlockedAt: 3.1 },
+export const LOCATIONS: Record<string, Scene> = {
+  'player_room': { id: 'player_room', name: 'My Apartment', description: 'My small apartment. The new laptop is on the desk.', worldType: 'office', mapCoordinates: { x: 25, y: 40 }, progressRequirement: 0 },
+  'tokyo_cyber_cafe': { id: 'tokyo_cyber_cafe', name: 'Net-Dive Cyber Cafe', description: 'An underground internet cafe in Akihabara, Tokyo. Known haunt for information brokers.', worldType: 'cafe', mapCoordinates: { x: 84, y: 42 }, progressRequirement: 1.1 },
 };
 
-interface SacrificeChoice {
+interface Sacrifice {
     id: string;
     text: string;
-    effect: string;
-    integrityCost: number;
+    consequence: string;
+    healthCost: number;
 }
 
-export const ALL_CASES = [
-  { id: 'CYB-001', title: 'Project Shadowfall', status: 'Active', summary: 'Investigating a series of cyberattacks against federal financial institutions. Traces point to a sophisticated actor known as "Void".', details: 'Initial breach vector identified as a zero-day exploit in enterprise VPN software. Data exfiltration focused on sensitive economic forecasts. Team is currently analyzing malware samples for attribution.' },
-  { id: 'CYB-002', title: "Void's Origin", status: 'Locked', summary: 'A fragmented data packet recovered from a derelict warehouse terminal. Contains early writings and code snippets from "Void".', details: 'DATA FRAGMENT 1:\n"...they built this digital world as a cage. They control the flow of information, the very thoughts we are allowed to have. They call us criminals for seeking knowledge, for wanting to be free. But who is the real criminal? The one who opens a locked door, or the one who built the prison?\n\nThey took everything from me. My research, my name. They buried me in a digital grave. But they forgot one thing... ghosts can haunt the machine."\n\nANALYSIS: Subject displays a deep-seated grudge against a corporate or government entity. Suggests a personal motive beyond financial gain.', unlockedAt: 2 },
-  { id: 'CYB-003', title: "The Puppeteer's Network", status: 'Locked', summary: 'Data recovered from a Tokyo cyber cafe reveals a complex network topology. Void is using a distributed network to mask their true location.', details: 'DATA FRAGMENT 2:\n"This is my web. Each node a puppet, dancing on my strings. They chase my shadows across the globe, never realizing I am the one pulling."\n\n[ FURTHER DATA REQUIRES SACRIFICE TO DECRYPT ]', encryptedDetails: 'The network\'s central hub appears to be located in Europe. The reference to "their own backyard" combined with network traffic analysis points towards a major data hub in Frankfurt, Germany. Recommending field operation to investigate Europa Data Center.', isEncrypted: true, unlockedAt: 3, 
-    sacrificeToDecrypt: [
-        { id: 'INTEGRITY_MONITOR', text: 'Sacrifice the System Integrity Monitor.', effect: "Your system's health will be permanently hidden.", integrityCost: 5 },
-        { id: 'EVIDENCE_CACHE', text: 'Purge the Evidence Viewer Cache.', effect: 'The Evidence Viewer will become unstable and glitchy.', integrityCost: 10 },
-    ] as SacrificeChoice[]
+export const CASES = [
+  { id: 'CYB-001', title: 'Project Shadowfall', status: 'Active', briefing: 'Investigating a series of cyberattacks against federal financial institutions. Traces point to a sophisticated actor known as "Void".', fullReport: 'Initial breach vector identified as a zero-day exploit in enterprise VPN software. Data exfiltration focused on sensitive economic forecasts. Team is currently analyzing malware samples for attribution.' },
+  { 
+    id: 'CYB-002', 
+    title: "Void's Network", 
+    status: 'Locked', 
+    briefing: "Data recovered from a Tokyo cyber cafe reveals Void's origins and a complex distributed network used to mask their location.", 
+    fullReport: 'DATA FRAGMENT 1:\n"...they built this digital world as a cage. They control the flow of information, the very thoughts we are allowed to have. They call us criminals for seeking knowledge, for wanting to be free. But who is the real criminal? The one who opens a locked door, or the one who built the prison?\n\nThey took everything from me. My research, my name. They buried me in a digital grave. But they forgot one thing... ghosts can haunt the machine."\n\nANALYSIS: Subject displays a deep-seated grudge against a corporate or government entity.\n\nDATA FRAGMENT 2:\n"This is my web. Each node a puppet, dancing on my strings. They chase my shadows across the globe, never realizing I am the one pulling."\n\n[ FURTHER DATA REQUIRES SACRIFICE TO DECRYPT ]', 
+    decryptedReport: "The network's central hub is well-hidden. With this decryption, the final protocol is now accessible in case file CYB-003. A final sacrifice will be required.", 
+    isEncrypted: true, 
+    progressRequirement: 2, 
+    sacrifices: [
+        { id: 'INTEGRITY_MONITOR', text: 'Sacrifice the System Integrity Monitor.', consequence: "Your system's health will be permanently hidden.", healthCost: 5 },
+        { id: 'EVIDENCE_CACHE', text: 'Purge the Evidence Viewer Cache.', consequence: 'The Evidence Viewer will become unstable and glitchy.', healthCost: 10 },
+    ] as Sacrifice[]
   },
-  { id: 'CYB-004', title: 'The Ghost Protocol', status: 'Locked - CRITICAL', summary: 'Final message from Void. A great sacrifice must be made to breach the final firewall.', details: 'You are at the final gateway. The Europa Data Center mainframe is protected by a quantum firewall. A brute force attack is impossible. To break through, you must sacrifice a part of your own system, permanently.', isEncrypted: true, unlockedAt: 3.2,
-    sacrificeToProceed: [
-        { id: 'COMMS_UPLINK', text: 'Sacrifice the Secure Comms Uplink.', effect: 'You will be cut off from Void forever.', integrityCost: 20 },
-        { id: 'OBJECTIVE_TRACKER', text: 'Sacrifice the Objective Tracker.', effect: 'You will receive no further mission guidance.', integrityCost: 15 },
-    ] as SacrificeChoice[],
-    encryptedDetails: 'AGENT 77. YOU\'VE MADE IT. YOU\'VE SACRIFICED. NOW YOU HAVE A CHOICE.\n\nOPTION A: EXPOSE EVERYTHING. The corruption, the lies, the program that created me. The system will burn, but from the ashes, something new can grow. The world will know chaos, but it will be a world of truth. This is the path of sacrifice for a greater good.\n\nOPTION B: JOIN ME. Together, we can control the system from within. We can be the ghosts in the machine, manipulating events for what WE believe is right. Order will be maintained, but it will be our order. This is the path of control, of power.\n\nTHE CHOICE IS YOURS. THE PROTOCOL IS IN YOUR HANDS. WHAT WILL YOU SACRIFICE?', 
+  { 
+    id: 'CYB-003', 
+    title: 'The Ghost Protocol', 
+    status: 'Locked - CRITICAL', 
+    briefing: 'Final message from Void. A great sacrifice must be made to breach the final firewall.', 
+    fullReport: "You have reached the core of Void's network. The final protocol is protected by one last layer of security. To proceed, you must sacrifice a core component of your OS, permanently.", 
+    isEncrypted: true, 
+    progressRequirement: 3.2,
+    sacrifices: [
+        { id: 'COMMS_UPLINK', text: 'Sacrifice the Secure Comms Uplink.', consequence: 'You will be cut off from Void forever.', healthCost: 20 },
+        { id: 'OBJECTIVE_TRACKER', text: 'Sacrifice the Objective Tracker.', consequence: 'You will receive no further mission guidance.', healthCost: 15 },
+    ] as Sacrifice[],
+    decryptedReport: 'AGENT 77. YOU\'VE MADE IT. YOU\'VE SACRIFICED. NOW YOU HAVE A CHOICE.\n\nOPTION A: EXPOSE EVERYTHING. The corruption, the lies, the program that created me. The system will burn, but from the ashes, something new can grow. The world will know chaos, but it will be a world of truth. This is the path of sacrifice for a greater good.\n\nOPTION B: JOIN ME. Together, we can control the system from within. We can be the ghosts in the machine, manipulating events for what WE believe is right. Order will be maintained, but it will be our order. This is the path of control, of power.\n\nTHE CHOICE IS YOURS. THE PROTOCOL IS IN YOUR HANDS. WHAT WILL YOU SACRIFICE?', 
   },
 ];
 
-export const ALL_MESSAGES = [
-    { sender: 'CONTROL', text: 'Agent 77, what is your status?', timestamp: '14:32', align: 'left' },
-    { sender: 'AGENT_77', text: 'Control, I am in position.', timestamp: '14:33', align: 'right' },
-    { sender: 'CONTROL', text: 'Copy that. Maintain radio silence.', timestamp: '14:33', align: 'left' },
-    { sender: 'UNKNOWN', text: '...can you hear me?...', timestamp: '15:01', align: 'center', unlockedAt: 1.1, isGlitch: true },
-    { sender: 'VOID', text: 'Finally. I\'ve bypassed their firewalls. We can speak freely now, Agent 77.', timestamp: '15:02', align: 'left', unlockedAt: 1.1 },
-    { conversationId: 'c0', unlockedAt: 1.1, choices: [
-        { id: 'c0a', conversationId: 'c0', text: 'Who is this? Identify yourself.', integrityChange: -5, storyProgressChange: 0.1 },
-        { id: 'c0b', conversationId: 'c0', text: 'How did you get this number?', integrityChange: 0, storyProgressChange: 0.1 },
-        { id: 'c0c', conversationId: 'c0', text: '[Say nothing and attempt to trace]', integrityChange: 5, storyProgressChange: 0.1 },
+export const MESSAGES = [
+    { author: 'CONTROL', text: 'Agent 77, what is your status?', timestamp: '14:32', align: 'left' },
+    { author: 'AGENT_77', text: 'Control, I am in position.', timestamp: '14:33', align: 'right' },
+    { author: 'CONTROL', text: 'Copy that. Maintain radio silence.', timestamp: '14:33', align: 'left' },
+    { author: 'UNKNOWN', text: '...can you hear me?...', timestamp: '15:01', align: 'center', progressRequirement: 1.1, isGlitched: true },
+    { author: 'VOID', text: 'Finally. I\'ve bypassed their firewalls. We can speak freely now, Agent 77.', timestamp: '15:02', align: 'left', progressRequirement: 1.1 },
+    { dialogueId: 'c0', progressRequirement: 1.1, choices: [
+        { id: 'c0a', dialogueId: 'c0', text: 'Who is this? Identify yourself.', healthChange: -5, progressChange: 0.1 },
+        { id: 'c0b', dialogueId: 'c0', text: 'How did you get this number?', healthChange: 0, progressChange: 0.1 },
+        { id: 'c0c', dialogueId: 'c0', text: '[Say nothing and attempt to trace]', healthChange: 5, progressChange: 0.1 },
     ]},
-    { sender: 'VOID', text: 'Clever. But you can\'t trace a ghost.', timestamp: '15:03', align: 'left', unlockedAt: 1.2, dependsOnChoice: 'c0c' },
-    { sender: 'VOID', text: 'Call me Void. I know you\'ve been looking for me. But you\'re just a pawn in their game, chasing shadows they want you to see.', timestamp: '15:03', align: 'left', unlockedAt: 1.2, dependsOnChoice: 'c0' },
-    { sender: 'VOID', text: 'You want to find the truth? You have to leave your cage. Find what I left for you. Start here: warehouse_b7', timestamp: '15:04', align: 'left', unlockedAt: 1.2, dependsOnChoice: 'c0' },
-    { sender: 'SYSTEM', text: '*** TRACE FAILED | SOURCE UNKNOWN ***', timestamp: '15:06', align: 'center', unlockedAt: 1.2, dependsOnChoice: 'c0' },
-    { sender: 'VOID', text: 'So, you found my little present. A piece of my past. Does it make you question who the real villain is?', timestamp: '16:22', align: 'left', unlockedAt: 2.1 },
-    { sender: 'VOID', text: 'They watch you, you know. Every command you type. Every file you open. They see your system integrity dropping and they do nothing. What kind of sacrifice are they willing to make? You.', timestamp: '16:23', align: 'left', unlockedAt: 2.1 },
-    { conversationId: 'c1', unlockedAt: 2.1, choices: [
-        { id: 'c1a', conversationId: 'c1', text: '[REMAIN SILENT]', integrityChange: 5, storyProgressChange: 0.1 },
-        { id: 'c1b', conversationId: 'c1', text: 'You\'re just a terrorist.', integrityChange: -10, storyProgressChange: 0.1 },
-        { id: 'c1c', conversationId: 'c1', text: 'Who are "they"?', integrityChange: -5, storyProgressChange: 0.1 },
+    { author: 'VOID', text: 'Clever. But you can\'t trace a ghost.', timestamp: '15:03', align: 'left', progressRequirement: 1.2, requiresChoice: 'c0c' },
+    { author: 'VOID', text: 'Call me Void. I know you\'ve been looking for me. But you\'re just a pawn in their game, chasing shadows they want you to see.', timestamp: '15:03', align: 'left', progressRequirement: 1.2, requiresChoice: 'c0' },
+    { author: 'VOID', text: 'You want to find the truth? Go where the sun rises. Look for the Net-Dive. Your move, Agent. - V', timestamp: '15:04', align: 'left', progressRequirement: 1.2, requiresChoice: 'c0' },
+    { author: 'SYSTEM', text: '*** TRACE FAILED | SOURCE UNKNOWN ***', timestamp: '15:06', align: 'center', progressRequirement: 1.2, requiresChoice: 'c0' },
+    { author: 'VOID', text: 'Persistent. The Agency preaches sacrifice for the greater good, but it is always someone else\'s sacrifice. Never their own.', timestamp: '18:15', align: 'left', progressRequirement: 2.1 },
+    { author: 'VOID', text: 'To find the real truth, sometimes you have to sacrifice a piece of yourself. Are you ready?', timestamp: '18:16', align: 'left', progressRequirement: 2.1 },
+     { dialogueId: 'c1', progressRequirement: 2.1, choices: [
+        { id: 'c1a', dialogueId: 'c1', text: 'I am an FBI agent. I serve my country.', healthChange: 0, progressChange: 0.1 },
+        { id: 'c1b', dialogueId: 'c1', text: 'What do you want from me?', healthChange: -5, progressChange: 0.1 },
+        { id: 'c1c', dialogueId: 'c1', text: 'I\'m starting to understand.', healthChange: 10, progressChange: 0.1 },
     ]},
-    { sender: 'VOID', text: 'More breadcrumbs await where the sun rises. Look for the Net-Dive. Your move, Agent. - V', timestamp: '16:25', align: 'left', unlockedAt: 2.2, dependsOnChoice: 'c1' },
-    { sender: 'VOID', text: 'Persistent. The Agency preaches sacrifice for the greater good, but it is always someone else\'s sacrifice. Never their own.', timestamp: '18:15', align: 'left', unlockedAt: 3 },
-    { sender: 'VOID', text: 'To find the real truth, sometimes you have to sacrifice a piece of yourself. Are you ready?', timestamp: '18:16', align: 'left', unlockedAt: 3 },
-     { conversationId: 'c2', unlockedAt: 3, choices: [
-        { id: 'c2a', conversationId: 'c2', text: 'I am an FBI agent. I serve my country.', integrityChange: 0, storyProgressChange: 0.1 },
-        { id: 'c2b', conversationId: 'c2', text: 'What do you want from me?', integrityChange: -5, storyProgressChange: 0.1 },
-        { id: 'c2c', conversationId: 'c2', text: 'I\'m starting to understand.', integrityChange: 10, storyProgressChange: 0.1 },
-    ]},
-    { sender: 'VOID', text: 'The final piece is close to home. Their home. Find me in the heart of the machine: data_center_europa', timestamp: '18:18', align: 'left', unlockedAt: 3.1, dependsOnChoice: 'c2' },
+    { author: 'VOID', text: 'The final piece is within your grasp. Access your case files. The heart of the machine awaits your sacrifice.', timestamp: '18:18', align: 'left', progressRequirement: 3.1, requiresChoice: 'c1' },
 ] as const;
 
-export const CaseFilesApp: React.FC<AppContentProps> = ({ storyProgress: story = 0, onChoice, onSacrifice, onAdvanceStory }) => {
-  const files = useMemo(() => {
-    return ALL_CASES.filter(f => !f.unlockedAt || story >= f.unlockedAt);
-  }, [story]);
-
+export const CaseFilesApp: React.FC<AppContentProps> = ({ story = 0, onChoice, onDisableSystem, onAdvanceStory }) => {
+  const files = useMemo(() => CASES.filter(f => !f.progressRequirement || story >= f.progressRequirement), [story]);
   const [file, setFile] = useState(files[0]);
   const [keys, setKeys] = useState<Record<string, boolean>>({});
   
-  const handleSacrifice = (choice: SacrificeChoice) => {
+  const sacrifice = (s: Sacrifice) => {
     playSound('decryption_success');
-    onSacrifice?.(choice.id, choice.integrityCost);
+    onDisableSystem?.(s.id, s.healthCost);
     if (file?.id) {
         setKeys(p => ({ ...p, [file.id]: true }));
-        if (file.id === 'CYB-003') {
-            onAdvanceStory?.(0.1);
-        } else if (file.id === 'CYB-004') {
-            onAdvanceStory?.(0.8);
-        }
+        if (file.id === 'CYB-002') onAdvanceStory?.(1.1);
+        else if (file.id === 'CYB-003') onAdvanceStory?.(0.8);
     }
   };
 
-  const handleFinalChoice = (choice: ConversationChoice) => {
-    playSound('ui_click');
-    onChoice?.(choice);
-  };
+  const finalChoice = (c: DialogueChoice) => { playSound('ui_click'); onChoice?.(c); };
   
-  const renderSacrifice = (title: string, choices: SacrificeChoice[]) => (
+  const renderSacrifices = (title: string, options: Sacrifice[]) => (
     <div className="mt-4 p-4 border border-dashed border-red-500/50 bg-red-900/20">
         <h4 className="text-red-400 font-bold mb-3 text-xl">{title}</h4>
         <div className="space-y-3">
-            {choices.map(choice => (
-                <button key={choice.id} onClick={() => handleSacrifice(choice)} className="w-full text-left bg-slate-700 hover:bg-red-800/70 p-3 rounded transition-colors">
-                    <p className="font-bold text-lg">{choice.text}</p>
-                    <p className="text-gray-400 text-base">{choice.effect}</p>
+            {options.map(s => (
+                <button key={s.id} onClick={() => sacrifice(s)} className="w-full text-left bg-slate-700 hover:bg-red-800/70 p-3 rounded transition-colors">
+                    <p className="font-bold text-lg">{s.text}</p>
+                    <p className="text-gray-400 text-base">{s.consequence}</p>
                 </button>
             ))}
         </div>
@@ -122,283 +115,178 @@ export const CaseFilesApp: React.FC<AppContentProps> = ({ storyProgress: story =
     <div className="h-full flex text-lg bg-black/20 text-cyan-300">
       <div className="w-1/3 border-r border-cyan-700/50 overflow-y-auto">
         <div className="p-2 bg-slate-800 border-b border-cyan-700/50 font-bold">CASE FILES</div>
-        <ul>
-          {files.map(f => (
-            <li key={f.id} onClick={() => setFile(f)} className={`p-2 cursor-pointer border-b border-slate-700 hover:bg-cyan-800/50 ${file?.id === f.id ? 'bg-cyan-600/30' : ''}`}>
-              <div className="font-bold">{f.id}</div>
-              <div className="text-base text-gray-400">{f.title}</div>
-              <div className={`text-base mt-1 font-bold ${f.status.includes('Active') ? 'text-red-500' : 'text-green-500'}`}>{f.status}</div>
-            </li>
-          ))}
-        </ul>
+        <ul>{files.map(f => (<li key={f.id} onClick={() => setFile(f)} className={`p-2 cursor-pointer border-b border-slate-700 hover:bg-cyan-800/50 ${file?.id === f.id ? 'bg-cyan-600/30' : ''}`}><div className="font-bold">{f.id}</div><div className="text-base text-gray-400">{f.title}</div><div className={`text-base mt-1 font-bold ${f.status.includes('Active') ? 'text-red-500' : 'text-green-500'}`}>{f.status}</div></li>))}</ul>
       </div>
       <div className="w-2/3 p-4 overflow-y-auto">
         {file ? (
           <div>
             <h2 className="text-3xl font-bold">{file.id}: {file.title}</h2>
             <p className={`my-2 text-2xl ${file.status.includes('Active') ? 'text-red-400' : 'text-green-400'}`}>STATUS: {file.status}</p>
-            <div className="mt-4">
-              <h3 className="font-bold border-b border-cyan-700/50 pb-1 mb-2">SUMMARY</h3>
-              <p className="text-gray-300">{file.summary}</p>
-            </div>
+            <div className="mt-4"><h3 className="font-bold border-b border-cyan-700/50 pb-1 mb-2">SUMMARY</h3><p className="text-gray-300">{file.briefing}</p></div>
             <div className="mt-6">
               <h3 className="font-bold border-b border-cyan-700/50 pb-1 mb-2">DETAILS</h3>
-              <p className="text-gray-300 whitespace-pre-wrap">{file.details}</p>
-
-              {file.id === 'CYB-004' && onChoice && story >= 4 && (
+              <p className="text-gray-300 whitespace-pre-wrap">{file.fullReport}</p>
+              {file.id === 'CYB-003' && onChoice && story >= 4 && (
                 <div className="mt-6">
-                    <p className="text-gray-300 whitespace-pre-wrap mt-2">{file.encryptedDetails}</p>
+                    <p className="text-gray-300 whitespace-pre-wrap mt-2">{file.decryptedReport}</p>
                     <div className="mt-6 flex space-x-4">
-                    <button 
-                        onClick={() => handleFinalChoice({ id: 'A', conversationId: 'final_choice', text: 'Expose Everything' })}
-                        className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-black font-bold py-3 px-4 rounded transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-400 text-xl"
-                    >
-                        EXPOSE EVERYTHING
-                    </button>
-                    <button 
-                        onClick={() => handleFinalChoice({ id: 'B', conversationId: 'final_choice', text: 'Join Void' })}
-                        className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-400 text-xl"
-                    >
-                        JOIN VOID
-                    </button>
+                    <button onClick={() => finalChoice({ id: 'A', dialogueId: 'final_choice', text: 'Expose' })} className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-black font-bold py-3 px-4 rounded transition-colors text-xl">EXPOSE EVERYTHING</button>
+                    <button onClick={() => finalChoice({ id: 'B', dialogueId: 'final_choice', text: 'Join' })} className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded transition-colors text-xl">JOIN VOID</button>
                     </div>
                 </div>
               )}
-
-              {file.isEncrypted && !keys[file.id] && file.sacrificeToDecrypt && renderSacrifice('CHOOSE SACRIFICE TO DECRYPT:', file.sacrificeToDecrypt)}
-              {file.isEncrypted && !keys[file.id] && file.sacrificeToProceed && renderSacrifice('CHOOSE SACRIFICE TO PROCEED:', file.sacrificeToProceed)}
-              
-              {file.isEncrypted && keys[file.id] && file.id !== 'CYB-004' && (
-                <div className="mt-4 p-4 border border-dashed border-green-500/50 bg-green-900/20">
-                    <p className="text-green-400 font-bold">[ DECRYPTION COMPLETE ]</p>
-                    <p className="text-gray-300 whitespace-pre-wrap mt-2">{file.encryptedDetails}</p>
-                </div>
+              {file.isEncrypted && !keys[file.id] && file.sacrifices && renderSacrifices('CHOOSE SACRIFICE TO PROCEED:', file.sacrifices)}
+              {file.isEncrypted && keys[file.id] && file.id !== 'CYB-003' && (
+                <div className="mt-4 p-4 border border-dashed border-green-500/50 bg-green-900/20"><p className="text-green-400 font-bold">[ DECRYPTION COMPLETE ]</p><p className="text-gray-300 whitespace-pre-wrap mt-2">{file.decryptedReport}</p></div>
               )}
             </div>
           </div>
-        ) : (
-          <div className="flex items-center justify-center h-full">Select a case file to view details.</div>
-        )}
+        ) : (<div className="flex items-center justify-center h-full">Select a case file.</div>)}
       </div>
     </div>
   );
 };
 
 const evidence = [
-  { id: 'EV-001', type: 'image', title: 'Satellite Imagery - Compound', url: EVIDENCE_VIEWER_IMAGES.ev001 },
-  { id: 'EV-002', type: 'image', title: 'Recovered Hard Drive', url: EVIDENCE_VIEWER_IMAGES.ev002 },
-  { id: 'EV-003', type: 'image', title: 'CCTV - Suspect Vehicle', url: EVIDENCE_VIEWER_IMAGES.ev003 },
-  { id: 'EV-004', type: 'image', title: 'Crime Scene Photo A', url: EVIDENCE_VIEWER_IMAGES.ev004 },
-  { id: 'EV-005', type: 'image', title: 'Decrypted File Fragment', url: EVIDENCE_VIEWER_IMAGES.ev005 },
-  { id: 'EV-006', type: 'image', title: 'Facial Recognition Match', url: EVIDENCE_VIEWER_IMAGES.ev006 },
+  { id: 'EV-001', type: 'image', title: 'Satellite Imagery - Compound', url: EVIDENCE_IMAGES.ev001 },
+  { id: 'EV-002', type: 'image', title: 'Recovered Hard Drive', url: EVIDENCE_IMAGES.ev002 },
+  { id: 'EV-003', type: 'image', title: 'CCTV - Suspect Vehicle', url: EVIDENCE_IMAGES.ev003 },
+  { id: 'EV-004', type: 'image', title: 'Crime Scene Photo A', url: EVIDENCE_IMAGES.ev004 },
+  { id: 'EV-005', type: 'image', title: 'Decrypted File Fragment', url: EVIDENCE_IMAGES.ev005 },
+  { id: 'EV-006', type: 'image', title: 'Facial Recognition Match', url: EVIDENCE_IMAGES.ev006 },
 ];
 
-export const EvidenceViewerApp: React.FC<AppContentProps> = ({ sacrificedSystems = [] }) => {
+export const EvidenceViewerApp: React.FC<AppContentProps> = ({ disabledSystems = [] }) => {
   const [item, setItem] = useState(evidence[0]);
-  const isUnstable = sacrificedSystems.includes('EVIDENCE_CACHE');
+  const isUnstable = disabledSystems.includes('EVIDENCE_CACHE');
 
   return (
     <div className="h-full flex flex-col bg-black/30 relative">
-      {isUnstable && <div className="absolute inset-0 scanline-overlay z-10 pointer-events-none" style={{ animationDuration: '1s', opacity: 0.5}} />}
+      {isUnstable && <div className="absolute inset-0 scanlines z-10 pointer-events-none" style={{ animationDuration: '1s', opacity: 0.5}} />}
       <div className="flex-grow flex">
         <div className="w-1/4 border-r border-cyan-700/50 overflow-y-auto">
           <div className="p-2 bg-slate-800 border-b border-cyan-700/50 font-bold text-cyan-300">EVIDENCE LOCKER</div>
-          <ul>
-            {evidence.map(i => (
-              <li key={i.id} onClick={() => setItem(i)} className={`p-2 cursor-pointer border-b border-slate-700 hover:bg-cyan-800/50 ${item.id === i.id ? 'bg-cyan-600/30' : ''}`}>
-                <div className="font-bold text-cyan-400">{i.id}</div>
-                <div className="text-base text-gray-300">{i.title}</div>
-              </li>
-            ))}
-          </ul>
+          <ul>{evidence.map(i => (<li key={i.id} onClick={() => setItem(i)} className={`p-2 cursor-pointer border-b border-slate-700 hover:bg-cyan-800/50 ${item.id === i.id ? 'bg-cyan-600/30' : ''}`}><div className="font-bold text-cyan-400">{i.id}</div><div className="text-base text-gray-300">{i.title}</div></li>))}</ul>
         </div>
         <div className={`w-3/4 p-4 flex items-center justify-center bg-black relative`}>
           {isUnstable && <div className="absolute inset-0 glitch-bg z-20 pointer-events-none" />}
-          {item && (<img src={item.url} alt={item.title} className="max-w-full max-h-full object-contain pixelated"/>)}
+          {item && (<img src={item.url} alt={item.title} className="max-w-full max-h-full object-contain"/>)}
         </div>
       </div>
       <div className="h-12 bg-slate-800 border-t border-cyan-700/50 flex items-center px-4 text-lg">
         {item && (<p className="text-cyan-300 font-bold">Displaying: <span className="text-white">{item.id} - {item.title}</span></p>)}
         {isUnstable && <p className="ml-auto text-red-500 font-bold animate-pulse">CACHE UNSTABLE</p>}
       </div>
-      <style>{`
-        @keyframes glitch-bg-anim {
-            0% { clip-path: inset(45% 0 56% 0); } 20% { clip-path: inset(5% 0 90% 0); } 40% { clip-path: inset(23% 0 33% 0); } 60% { clip-path: inset(80% 0 10% 0); } 80% { clip-path: inset(40% 0 45% 0); } 100% { clip-path: inset(50% 0 30% 0); }
-        }
-        .glitch-bg::after { content: ''; position: absolute; inset: 0; background: rgba(100,0,0,0.1); animation: glitch-bg-anim 3s infinite linear alternate-reverse; }
-      `}</style>
+      <style>{`@keyframes glitch-bg-anim{0%{clip-path:inset(45% 0 56% 0)}20%{clip-path:inset(5% 0 90% 0)}40%{clip-path:inset(23% 0 33% 0)}60%{clip-path:inset(80% 0 10% 0)}80%{clip-path:inset(40% 0 45% 0)}100%{clip-path:inset(50% 0 30% 0)}}.glitch-bg::after{content:'';position:absolute;inset:0;background:rgba(100,0,0,0.1);animation:glitch-bg-anim 3s infinite linear alternate-reverse}`}</style>
     </div>
   );
 };
 
-interface Message {
-    readonly sender: string;
-    readonly text: string;
-    readonly timestamp: string;
-    readonly align: 'left' | 'right' | 'center';
-    readonly isGlitch?: boolean;
-}
-
-const Bubble: React.FC<Message> = ({ sender, text, timestamp, align, isGlitch }) => {
-    if (align === 'center') return <div className={`text-center my-2 text-base font-bold ${isGlitch ? 'text-red-500 glitch' : 'text-cyan-400'}`} data-text={text}>{text}</div>
-    const me = align === 'right';
-    return (
-        <div className={`flex flex-col my-2 ${me ? 'items-end' : 'items-start'}`}>
-            <div className={`rounded-lg px-3 py-2 max-w-xs md:max-w-md ${me ? 'bg-cyan-800' : 'bg-slate-700'}`}>
-                <p className={`font-bold text-lg ${me ? 'text-cyan-200' : 'text-gray-200'}`}>{sender}</p>
-                <p className="text-white text-xl whitespace-pre-wrap">{text}</p>
-                <div className="flex justify-end items-center mt-1"><p className="text-base text-gray-400 text-right">{timestamp}</p></div>
-            </div>
-        </div>
-    );
+const Bubble: React.FC<{msg: any}> = ({ msg }) => {
+    if (msg.align === 'center') return <div className={`text-center my-2 text-base font-bold ${msg.isGlitched ? 'glitch text-red-500' : 'text-cyan-400'}`} data-text={msg.text}>{msg.text}</div>
+    const isPlayer = msg.align === 'right';
+    return (<div className={`flex flex-col my-2 ${isPlayer ? 'items-end' : 'items-start'}`}><div className={`rounded-lg px-3 py-2 max-w-xs md:max-w-md ${isPlayer ? 'bg-cyan-800' : 'bg-slate-700'}`}><p className={`font-bold text-lg ${isPlayer ? 'text-cyan-200' : 'text-gray-200'}`}>{msg.author}</p><p className="text-white text-xl whitespace-pre-wrap">{msg.text}</p><div className="flex justify-end items-center mt-1"><p className="text-base text-gray-400 text-right">{msg.timestamp}</p></div></div></div>);
 };
 
-const Choices: React.FC<{options: readonly ConversationChoice[], pick: (c: ConversationChoice) => void}> = ({ options, pick }) => {
-    const handlePick = (c: ConversationChoice) => {
-        playSound('ui_click');
-        pick(c);
-    }
-    return (
-        <div className="my-4 border-t border-b border-cyan-700/50 py-2">
-            <p className="text-center text-cyan-300 font-bold mb-2">Respond:</p>
-            <div className="flex flex-col items-center space-y-2">
-                {options.map(c => (<button key={c.id} onClick={() => handlePick(c)} className="w-full text-left bg-slate-700 hover:bg-cyan-800/70 p-2 rounded transition-colors text-lg">{c.text}</button>))}
-            </div>
-        </div>
-    );
+const Choices: React.FC<{options: readonly DialogueChoice[], onSelect: (c: DialogueChoice) => void}> = ({ options, onSelect }) => {
+    const select = (c: DialogueChoice) => { playSound('ui_click'); onSelect(c); }
+    return (<div className="my-4 border-t border-b border-cyan-700/50 py-2"><p className="text-center text-cyan-300 font-bold mb-2">Respond:</p><div className="flex flex-col items-center space-y-2">{options.map(c => (<button key={c.id} onClick={() => select(c)} className="w-full text-left bg-slate-700 hover:bg-cyan-800/70 p-2 rounded transition-colors text-lg">{c.text}</button>))}</div></div>);
 }
 
-export const SecureMessengerApp: React.FC<AppContentProps> = ({ storyProgress: story = 0, madeChoices: past = {}, onChoice, sacrificedSystems = [] }) => {
-  const end = useRef<HTMLDivElement>(null);
-  const prevChatLength = useRef(0);
-  const commsOffline = sacrificedSystems.includes('COMMS_UPLINK');
+export const SecureMessengerApp: React.FC<AppContentProps> = ({ story = 0, choices = {}, onChoice, disabledSystems = [] }) => {
+  const endRef = useRef<HTMLDivElement>(null);
+  const prevCount = useRef(0);
+  const isOffline = disabledSystems.includes('COMMS_UPLINK');
 
   const chat = useMemo(() => {
-    const list: (Message | { options: readonly ConversationChoice[], conversationId: string })[] = [];
-    let done = true;
-    for (const i of ALL_MESSAGES) {
-      if (commsOffline && i.sender === 'VOID' && 'unlockedAt' in i && i.unlockedAt > 3.2) continue;
-      if ('unlockedAt' in i && i.unlockedAt && story < i.unlockedAt) continue;
-      if ('choices' in i) {
-        const picked = past[i.conversationId];
+    const history: any[] = [];
+    let showNext = true;
+    for (const msg of MESSAGES) {
+      if (isOffline && 'author' in msg && msg.author === 'VOID' && 'progressRequirement' in msg && msg.progressRequirement > 3.2) continue;
+      if ('progressRequirement' in msg && msg.progressRequirement && story < msg.progressRequirement) continue;
+      if ('choices' in msg) {
+        const picked = choices[msg.dialogueId];
         if (picked) {
-            const option = i.choices.find(c => c.id === picked);
-            if (option) list.push({ sender: 'AGENT_77', text: option.text, timestamp: '', align: 'right' });
-            done = true;
+            const opt = msg.choices.find(c => c.id === picked);
+            if (opt) history.push({ author: 'AGENT_77', text: opt.text, timestamp: '', align: 'right' });
+            showNext = true;
         } else {
-          list.push({ options: i.choices, conversationId: i.conversationId });
-          done = false;
+          history.push({ options: msg.choices, dialogueId: msg.dialogueId });
+          showNext = false;
         }
       } else {
-        if ('dependsOnChoice' in i && i.dependsOnChoice) {
-            const d = i.dependsOnChoice;
-            if (!past[d] && !Object.values(past).includes(d)) continue;
+        if ('requiresChoice' in msg && msg.requiresChoice) {
+            if (!choices[msg.requiresChoice] && !Object.values(choices).includes(msg.requiresChoice)) continue;
         }
-        if (done) list.push(i);
+        if (showNext) history.push(msg);
       }
     }
-    if (commsOffline) {
-        list.push({ sender: 'SYSTEM', text: '*** SECURE UPLINK SEVERED ***', timestamp: '', align: 'center', isGlitch: true });
-    }
-    return list;
-  }, [story, past, commsOffline]);
+    if (isOffline) history.push({ author: 'SYSTEM', text: '*** SECURE UPLINK SEVERED ***', timestamp: '', align: 'center', isGlitched: true });
+    return history;
+  }, [story, choices, isOffline]);
   
   useEffect(() => {
-      const lastItem = chat.length > 0 ? chat[chat.length-1] : null;
-      const isNewMessage = chat.length > prevChatLength.current && lastItem && !('options' in lastItem);
-
-      if (isNewMessage) {
-        playSound('new_message', 0.7);
-      }
-      prevChatLength.current = chat.length;
-
-      setTimeout(() => { end.current?.scrollIntoView({ behavior: 'smooth' }); }, 100); 
+      const last = chat.length > 0 ? chat[chat.length-1] : null;
+      if (chat.length > prevCount.current && last && !('options' in last)) playSound('new_message', 0.7);
+      prevCount.current = chat.length;
+      setTimeout(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, 100); 
   }, [chat]);
 
   return (
     <div className="h-full flex flex-col bg-slate-800 text-white">
       <div className="h-12 bg-slate-900 border-b border-cyan-700 flex items-center px-4"><h2 className="font-bold text-cyan-300">SECURE COMMS - CH: 7 (ENCRYPTED)</h2></div>
       <div className="flex-grow p-4 overflow-y-auto bg-slate-900/50">
-        {chat.map((item, index) => {
-          if ('options' in item) return onChoice ? <Choices key={index} options={item.options} pick={onChoice} /> : null;
-          return <Bubble key={index} {...item} />;
-        })}
-        <div ref={end} />
+        {chat.map((item, i) => ('options' in item) ? (onChoice ? <Choices key={i} options={item.options} onSelect={onChoice} /> : null) : <Bubble key={i} msg={item} />)}
+        <div ref={endRef} />
       </div>
       <div className="h-16 bg-slate-900 border-t border-cyan-700 flex items-center p-2">
-        <input type="text" placeholder={commsOffline ? 'CONNECTION TERMINATED' : "Message transmission disabled..."} disabled className="w-full bg-slate-700 rounded p-2 text-gray-400 focus:outline-none" />
+        <input type="text" placeholder={isOffline ? 'CONNECTION TERMINATED' : "Message transmission disabled..."} disabled className="w-full bg-slate-700 rounded p-2 text-gray-400 focus:outline-none" />
         <button disabled className="ml-2 bg-cyan-700/50 text-white font-bold py-2 px-4 rounded cursor-not-allowed">SEND</button>
       </div>
     </div>
   );
 };
 
-export const NotesApp: React.FC<AppContentProps> = ({ password: code }) => {
-  return (
-    <div className="h-full w-full bg-yellow-100 text-black p-4 text-xl">
-      <h2 className="text-2xl font-bold mb-4 border-b border-gray-300 pb-2">To-Do List</h2>
-      <ul className="list-disc list-inside space-y-2">
-        <li>Pick up dry cleaning</li>
-        <li>Finish quarterly report</li>
-        <li className="font-bold">IMPORTANT: Finalize details for project <span className="bg-yellow-300 px-1 rounded">{code}</span> - critical deadline!</li>
-        <li>Call mom</li>
-      </ul>
-      <p className="mt-6 text-lg text-gray-600">Don't forget the password for the secure server.</p>
-    </div>
-  );
+export const NotesApp: React.FC<AppContentProps> = ({ password }) => {
+  return (<div className="h-full w-full bg-yellow-100 text-black p-4 text-xl"><h2 className="text-2xl font-bold mb-4 border-b border-gray-300 pb-2">To-Do List</h2><ul className="list-disc list-inside space-y-2"><li>Pick up dry cleaning</li><li>Finish quarterly report</li><li className="font-bold">IMPORTANT: Finalize details for project <span className="bg-yellow-300 px-1 rounded">{password}</span> - critical deadline!</li><li>Call mom</li></ul><p className="mt-6 text-lg text-gray-600">Don't forget the password for the secure server.</p></div>);
 };
 
 export const BrowserApp: React.FC = () => {
   return (
     <div className="h-full w-full bg-white text-black flex flex-col">
-      <div className="h-14 bg-gray-200 border-b border-gray-300 flex items-center p-2 space-x-2">
-        <div className="flex space-x-1.5"><div className="w-3 h-3 rounded-full bg-gray-400"></div><div className="w-3 h-3 rounded-full bg-gray-400"></div><div className="w-3 h-3 rounded-full bg-gray-400"></div></div>
-        <div className="flex-grow bg-white rounded-full h-8 flex items-center px-4 text-gray-500">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-            <span>https://my-personal-space.web/home</span>
-        </div>
-      </div>
-      <div className="flex-grow p-8 overflow-y-auto">
-        <h1 className="text-6xl font-bold text-gray-800 mb-4">Welcome to my Homepage!</h1>
-        <p className="text-2xl text-gray-600 mb-6">Just a little corner of the internet I call my own.</p>
-        <div className="bg-gray-100 p-6 rounded-lg shadow">
-            <h2 className="text-4xl font-semibold mb-2">About Me</h2>
-            <p className="text-gray-700 text-lg">I'm just a regular person, trying to make my way in the world. I enjoy hiking, photography, and spending time with my family. This desktop is mostly for work, but I like to keep a few personal things on here too.</p>
-        </div>
-        <div className="mt-8">
-            <h3 className="text-3xl font-semibold mb-4">My Latest Trip</h3>
-            <img src={BROWSER_APP_IMAGES.trip} alt="Vacation" className="rounded-lg shadow-lg w-full pixelated" />
-            <p className="text-center text-gray-500 italic mt-2 text-lg">A beautiful view from the mountains last summer.</p>
-        </div>
-        <div className="mt-12 border-t pt-8">
-          <h3 className="text-2xl font-semibold mb-4 text-gray-700">Comments (1)</h3>
-          <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
-            <p className="font-bold text-red-800">Void</p>
-            <p className="text-red-700 mt-1">Nice little homepage. A perfect cage you've built for yourself. Do you ever wonder what's outside the walls?</p>
-            <p className="text-sm text-gray-500 mt-2">1 hour ago</p>
-          </div>
-        </div>
-      </div>
+      <div className="h-14 bg-gray-200 border-b border-gray-300 flex items-center p-2 space-x-2"><div className="flex space-x-1.5"><div className="w-3 h-3 rounded-full bg-gray-400"></div><div className="w-3 h-3 rounded-full bg-gray-400"></div><div className="w-3 h-3 rounded-full bg-gray-400"></div></div><div className="flex-grow bg-white rounded-full h-8 flex items-center px-4 text-gray-500"><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg><span>https://my-personal-space.web/home</span></div></div>
+      <div className="flex-grow p-8 overflow-y-auto"><h1 className="text-6xl font-bold text-gray-800 mb-4">Welcome to my Homepage!</h1><p className="text-2xl text-gray-600 mb-6">Just a little corner of the internet I call my own.</p><div className="bg-gray-100 p-6 rounded-lg shadow"><h2 className="text-4xl font-semibold mb-2">About Me</h2><p className="text-gray-700 text-lg">I'm just a regular person, trying to make my way in the world. I enjoy hiking, photography, and spending time with my family. This desktop is mostly for work, but I like to keep a few personal things on here too.</p></div><div className="mt-8"><h3 className="text-3xl font-semibold mb-4">My Latest Trip</h3><img src={BROWSER_IMAGES.trip} alt="Vacation" className="rounded-lg shadow-lg w-full" /><p className="text-center text-gray-500 italic mt-2 text-lg">A beautiful view from the mountains last summer.</p></div><div className="mt-12 border-t pt-8"><h3 className="text-2xl font-semibold mb-4 text-gray-700">Comments (1)</h3><div className="bg-red-50 border border-red-200 p-4 rounded-lg"><p className="font-bold text-red-800">Void</p><p className="text-red-700 mt-1">Nice little homepage. A perfect cage you've built for yourself. Do you ever wonder what's outside the walls?</p><p className="text-sm text-gray-500 mt-2">1 hour ago</p></div></div></div>
     </div>
   );
 };
 
-const style1 = "bg-gray-200 hover:bg-gray-300 rounded-md text-4xl font-semibold text-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400";
-const style2 = "bg-orange-400 hover:bg-orange-500 text-white";
-const style3 = "bg-gray-400 hover:bg-gray-500 text-white";
+const btnStyle = "bg-gray-200 hover:bg-gray-300 rounded-md text-3xl font-semibold text-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400";
+const opStyle = "bg-orange-400 hover:bg-orange-500 text-white";
+const fnStyle = "bg-gray-400 hover:bg-gray-500 text-white";
 
 export const CalculatorApp: React.FC = () => {
-    const [display, setDisplay] = useState('0');
+    const [val, setVal] = useState('0');
     const [prev, setPrev] = useState<string | null>(null);
     const [op, setOp] = useState<string | null>(null);
 
-    useEffect(() => { if (display === '31337') setDisplay('GHOST'); }, [display]);
+    useEffect(() => { if (val === '31337') setVal('GHOST'); }, [val]);
 
-    const num = (n: string) => { (display === 'GHOST' || display === 'ERROR' || (display === '0' && n !== '.')) ? setDisplay(n) : setDisplay(p => p + n); };
-    const oper = (o: string) => { if (prev) eq(); setPrev(display); setDisplay('0'); setOp(o); };
+    const num = (n: string) => { (val === 'GHOST' || val === 'ERROR' || (val === '0' && n !== '.')) ? setVal(n) : setVal(p => p + n); };
+    const oper = (o: string) => { if (prev) eq(); setPrev(val); setVal('0'); setOp(o); };
     const eq = () => {
         if (!op || prev === null) return;
-        const a = parseFloat(display); const b = parseFloat(prev); let c: number;
+        const a = parseFloat(val);
+        const b = parseFloat(prev);
+
+        if (op === '+' && ((a === 6 && b === 7) || (a === 7 && b === 6))) {
+            playSound('sixtyseven', 1);
+            setVal('67');
+            setPrev(null);
+            setOp(null);
+            return;
+        }
+
+        let c: number;
         switch(op) {
             case '+': c = b + a; break;
             case '-': c = b - a; break;
@@ -406,101 +294,74 @@ export const CalculatorApp: React.FC = () => {
             case '/': c = b / a; break;
             default: return;
         }
-        setDisplay(String(c)); setPrev(null); setOp(null);
+        setVal(String(isFinite(c) ? c : 'ERROR'));
+        setPrev(null);
+        setOp(null);
     };
-    const clear = () => { setDisplay('0'); setPrev(null); setOp(null); };
-    const sign = () => { setDisplay(p => String(parseFloat(p) * -1)); };
-    const perc = () => { setDisplay(p => String(parseFloat(p) / 100)); };
-    const dot = () => { if (!display.includes('.')) setDisplay(p => p + '.'); }
+    const clear = () => { setVal('0'); setPrev(null); setOp(null); };
+    const sign = () => { setVal(p => String(parseFloat(p) * -1)); };
+    const perc = () => { setVal(p => String(parseFloat(p) / 100)); };
+    const dot = () => { if (!val.includes('.')) setVal(p => p + '.'); }
+    const click = (action: () => void) => { playSound('ui_click'); action(); }
 
-    const buttonClick = (action: () => void) => {
-      playSound('ui_click');
-      action();
-    }
+    const getDisplayFontSize = () => {
+        const len = val.length;
+        if (len > 14) return 'text-4xl';
+        if (len > 10) return 'text-5xl';
+        if (len > 7) return 'text-6xl';
+        return 'text-7xl';
+    };
 
     return (
         <div className="h-full w-full bg-gray-800 flex flex-col p-2">
-            <div className="h-1/5 bg-gray-700 text-white text-8xl text-right p-4 rounded-t-md flex items-end justify-end overflow-hidden"><p className="truncate">{display}</p></div>
+            <div className="h-1/5 bg-gray-700 text-white text-right px-4 py-2 rounded-t-md flex items-end justify-end overflow-hidden">
+                <p className={`${getDisplayFontSize()} leading-none`}>{val}</p>
+            </div>
             <div className="grid grid-cols-4 gap-2 flex-grow mt-2">
-                <button className={`${style1} ${style3}`} onClick={() => buttonClick(clear)}>AC</button>
-                <button className={`${style1} ${style3}`} onClick={() => buttonClick(sign)}>+/-</button>
-                <button className={`${style1} ${style3}`} onClick={() => buttonClick(perc)}>%</button>
-                <button className={`${style1} ${style2}`} onClick={() => buttonClick(() => oper('/'))}>÷</button>
-                <button className={style1} onClick={() => buttonClick(() => num('7'))}>7</button>
-                <button className={style1} onClick={() => buttonClick(() => num('8'))}>8</button>
-                <button className={style1} onClick={() => buttonClick(() => num('9'))}>9</button>
-                <button className={`${style1} ${style2}`} onClick={() => buttonClick(() => oper('*'))}>×</button>
-                <button className={style1} onClick={() => buttonClick(() => num('4'))}>4</button>
-                <button className={style1} onClick={() => buttonClick(() => num('5'))}>5</button>
-                <button className={style1} onClick={() => buttonClick(() => num('6'))}>6</button>
-                <button className={`${style1} ${style2}`} onClick={() => buttonClick(() => oper('-'))}>−</button>
-                <button className={style1} onClick={() => buttonClick(() => num('1'))}>1</button>
-                <button className={style1} onClick={() => buttonClick(() => num('2'))}>2</button>
-                <button className={style1} onClick={() => buttonClick(() => num('3'))}>3</button>
-                <button className={`${style1} ${style2}`} onClick={() => buttonClick(() => oper('+'))}>+</button>
-                <button className={`${style1} col-span-2`} onClick={() => buttonClick(() => num('0'))}>0</button>
-                <button className={style1} onClick={() => buttonClick(dot)}>.</button>
-                <button className={`${style1} ${style2}`} onClick={() => buttonClick(eq)}>=</button>
+                <button className={`${btnStyle} ${fnStyle}`} onClick={() => click(clear)}>AC</button>
+                <button className={`${btnStyle} ${fnStyle}`} onClick={() => click(sign)}>+/-</button>
+                <button className={`${btnStyle} ${fnStyle}`} onClick={() => click(perc)}>%</button>
+                <button className={`${btnStyle} ${opStyle}`} onClick={() => click(() => oper('/'))}>÷</button>
+                <button className={btnStyle} onClick={() => click(() => num('7'))}>7</button>
+                <button className={btnStyle} onClick={() => click(() => num('8'))}>8</button>
+                <button className={btnStyle} onClick={() => click(() => num('9'))}>9</button>
+                <button className={`${btnStyle} ${opStyle}`} onClick={() => click(() => oper('*'))}>×</button>
+                <button className={btnStyle} onClick={() => click(() => num('4'))}>4</button>
+                <button className={btnStyle} onClick={() => click(() => num('5'))}>5</button>
+                <button className={btnStyle} onClick={() => click(() => num('6'))}>6</button>
+                <button className={`${btnStyle} ${opStyle}`} onClick={() => click(() => oper('-'))}>−</button>
+                <button className={btnStyle} onClick={() => click(() => num('1'))}>1</button>
+                <button className={btnStyle} onClick={() => click(() => num('2'))}>2</button>
+                <button className={btnStyle} onClick={() => click(() => num('3'))}>3</button>
+                <button className={`${btnStyle} ${opStyle}`} onClick={() => click(() => oper('+'))}>+</button>
+                <button className={`${btnStyle} col-span-2`} onClick={() => click(() => num('0'))}>0</button>
+                <button className={btnStyle} onClick={() => click(dot)}>.</button>
+                <button className={`${btnStyle} ${opStyle}`} onClick={() => click(eq)}>=</button>
             </div>
         </div>
     );
 };
 
 const pics = [
-  { id: 1, title: 'Mountain Sunrise', url: GALLERY_APP_IMAGES.photo1 },
-  { id: 2, title: 'City at Night', url: GALLERY_APP_IMAGES.photo2 },
-  { id: 3, title: '[DATA_CORRUPTED]', url: GALLERY_APP_IMAGES.corrupted },
-  { id: 4, title: 'Beach Sunset', url: GALLERY_APP_IMAGES.photo4 },
-  { id: 5, title: 'Abstract Shapes', url: GALLERY_APP_IMAGES.photo5 },
-  { id: 6, title: 'Cute Puppy', url: GALLERY_APP_IMAGES.photo6 },
+  { id: 1, title: 'Mountain Sunrise', url: GALLERY_IMAGES.photo1 }, { id: 2, title: 'City at Night', url: GALLERY_IMAGES.photo2 },
+  { id: 3, title: '[DATA_CORRUPTED]', url: GALLERY_IMAGES.corrupted }, { id: 4, title: 'Beach Sunset', url: GALLERY_IMAGES.photo4 },
+  { id: 5, title: 'Abstract Shapes', url: GALLERY_IMAGES.photo5 }, { id: 6, title: 'Cute Puppy', url: GALLERY_IMAGES.photo6 },
 ];
 
 export const GalleryApp: React.FC = () => {
   const [pic, setPic] = useState(pics[0]);
-  return (
-    <div className="h-full flex flex-col bg-gray-100">
-      <div className="flex-grow flex">
-        <div className="w-1/3 border-r border-gray-300 overflow-y-auto bg-white">
-          <div className="p-3 bg-gray-200 border-b border-gray-300 font-bold text-gray-700">My Photos</div>
-          <div className="grid grid-cols-2 gap-1 p-1">
-            {pics.map(p => (<div key={p.id} onClick={() => setPic(p)} className={`cursor-pointer border-2 ${pic.id === p.id ? 'border-blue-500' : 'border-transparent'} hover:border-blue-400`}><img src={p.url} alt={p.title} className="w-full h-full object-cover pixelated"/></div>))}
-          </div>
-        </div>
-        <div className="w-2/3 p-4 flex items-center justify-center bg-gray-200">{pic && (<img src={pic.url} alt={pic.title} className="max-w-full max-h-full object-contain rounded-md shadow-lg pixelated"/>)}</div>
-      </div>
-      <div className="h-10 bg-gray-200 border-t border-gray-300 flex items-center px-4 text-lg">{pic && (<p className="text-gray-800 font-semibold">Viewing: <span className="font-normal text-gray-600">{pic.title}</span></p>)}</div>
-    </div>
-  );
+  return (<div className="h-full flex flex-col bg-gray-100"><div className="flex-grow flex"><div className="w-1/3 border-r border-gray-300 overflow-y-auto bg-white"><div className="p-3 bg-gray-200 border-b border-gray-300 font-bold text-gray-700">My Photos</div><div className="grid grid-cols-2 gap-1 p-1">{pics.map(p => (<div key={p.id} onClick={() => setPic(p)} className={`cursor-pointer border-2 ${pic.id === p.id ? 'border-blue-500' : 'border-transparent'} hover:border-blue-400`}><img src={p.url} alt={p.title} className="w-full h-full object-cover"/></div>))}</div></div><div className="w-2/3 p-4 flex items-center justify-center bg-gray-200">{pic && (<img src={pic.url} alt={pic.title} className="max-w-full max-h-full object-contain rounded-md shadow-lg"/>)}</div></div><div className="h-10 bg-gray-200 border-t border-gray-300 flex items-center px-4 text-lg">{pic && (<p className="text-gray-800 font-semibold">Viewing: <span className="font-normal text-gray-600">{pic.title}</span></p>)}</div></div>);
 };
 
-const Icon: React.FC<{className?: string}> = ({className}) => ( <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" className={className}><rect width="256" height="256" fill="none"/><line x1="216" y1="56" x2="40" y2="56" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16"/><line x1="104" y1="104" x2="104" y2="168" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16"/><line x1="152" y1="104" x2="152" y2="168" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16"/><path d="M200,56V208a8,8,0,0,1-8,8H64a8,8,0,0,1-8-8V56" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16"/><path d="M168,56V40a16,16,0,0,0-16-16H104A16,16,0,0,0,88,40V56" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16"/></svg> );
+const TrashSVG: React.FC<{className?: string}> = ({className}) => ( <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" className={className}><rect width="256" height="256" fill="none"/><line x1="216" y1="56" x2="40" y2="56" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16"/><line x1="104" y1="104" x2="104" y2="168" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16"/><line x1="152" y1="104" x2="152" y2="168" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16"/><path d="M200,56V208a8,8,0,0,1-8,8H64a8,8,0,0,1-8-8V56" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16"/><path d="M168,56V40a16,16,0,0,0-16-16H104A16,16,0,0,0,88,40V56" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16"/></svg> );
 
 export const TrashApp: React.FC = () => {
-  const [count, setCount] = useState(0);
-  const [seen, setSeen] = useState(false);
-  const click = () => {
-    playSound('ui_click');
-    if (seen) return; 
-    const next = count + 1; 
-    setCount(next); 
-    if (next >= 7) setSeen(true); 
-  };
+  const [clicks, setClicks] = useState(0);
+  const [found, setFound] = useState(false);
+  const click = () => { playSound('ui_click'); if (found) return; const n = clicks + 1; setClicks(n); if (n >= 7) setFound(true); };
   return (
     <div className="h-full w-full bg-gray-100 text-black p-4 text-lg flex flex-col items-center justify-center text-center">
-      {!seen ? (
-        <>
-            <Icon className="w-24 h-24 text-gray-400 mb-4" />
-            <h2 className="text-3xl font-bold mb-2">Trash</h2>
-            <p className="text-gray-600 mb-6">This folder is empty.</p>
-            <button onClick={click} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors">Empty Trash</button>
-            <p className="text-sm text-gray-400 mt-4">Clicks: {count}</p>
-        </>
-      ) : (
-        <div className="bg-black p-6 rounded-md border border-red-500/50 shadow-2xl shadow-black/50 animate-pulse-slow">
-            <h3 className="text-red-500 text-2xl mb-4">[ CORRUPTED_THOUGHT.TXT ]</h3>
-            <p className="text-gray-300 whitespace-pre-wrap">{`They think this is my whole world... \njust work and family photos. \n\nThey don't see the real me. \nThey never will. \n\nNot until it's too late.`}</p>
-        </div>
-      )}
+      {!found ? (<><TrashSVG className="w-24 h-24 text-gray-400 mb-4" /><h2 className="text-3xl font-bold mb-2">Trash</h2><p className="text-gray-600 mb-6">This folder is empty.</p><button onClick={click} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors">Empty Trash</button><p className="text-sm text-gray-400 mt-4">Clicks: {clicks}</p></>) : (<div className="bg-black p-6 rounded-md border border-red-500/50 shadow-2xl shadow-black/50 animate-pulse-slow"><h3 className="text-red-500 text-2xl mb-4">[ CORRUPTED_THOUGHT.TXT ]</h3><p className="text-gray-300 whitespace-pre-wrap">{`They think this is my whole world... \njust work and family photos. \n\nThey don't see the real me. \nThey never will. \n\nNot until it's too late.`}</p></div>)}
       <style>{`@keyframes pulse-slow { 50% { opacity: .85; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); } } .animate-pulse-slow { animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }`}</style>
     </div>
   );

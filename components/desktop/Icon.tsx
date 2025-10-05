@@ -1,30 +1,29 @@
-
 import React from 'react';
 import { AppDefinition } from '../../types';
 import { playSound } from '../../assets';
 
-interface DesktopIconProps {
+interface IconProps {
   app: AppDefinition;
   onOpen: () => void;
-  isLoggedIn: boolean;
-  position: { x: number, y: number };
+  isAgentDesktop: boolean;
+  pos: { x: number, y: number };
 }
 
-const DesktopIcon: React.FC<DesktopIconProps> = ({ app, onOpen, isLoggedIn, position }) => {
+const Icon: React.FC<IconProps> = ({ app, onOpen, isAgentDesktop, pos }) => {
 
-  const fbiClasses = {
+  const agentTheme = {
     container: "hover:bg-cyan-400/20 focus:bg-cyan-400/30",
     icon: "filter drop-shadow(0 0 4px #0ff) hue-rotate(190deg) brightness(1.7)",
     text: "text-cyan-200"
   };
 
-  const normalClasses = {
+  const personalTheme = {
     container: "hover:bg-blue-200/50 focus:bg-blue-200/80",
     icon: "",
     text: "text-slate-800"
   };
 
-  const theme = isLoggedIn ? fbiClasses : normalClasses;
+  const theme = isAgentDesktop ? agentTheme : personalTheme;
 
   const handleOpen = () => {
     playSound('ui_click');
@@ -34,10 +33,7 @@ const DesktopIcon: React.FC<DesktopIconProps> = ({ app, onOpen, isLoggedIn, posi
   return (
     <div
       className={`absolute flex flex-col items-center p-2 w-28 h-28 justify-start text-center cursor-pointer rounded-md transition-all duration-150 ${theme.container}`}
-      style={{
-        left: position.x,
-        top: position.y,
-      }}
+      style={{ left: pos.x, top: pos.y }}
       onDoubleClick={handleOpen}
       onClick={handleOpen}
       tabIndex={0}
@@ -45,9 +41,9 @@ const DesktopIcon: React.FC<DesktopIconProps> = ({ app, onOpen, isLoggedIn, posi
     >
       <div className={`w-12 h-12 mb-2 flex items-center justify-center`}>
         <img 
-            src={app.icon} 
+            src={app.iconUrl} 
             alt={app.name} 
-            className={`w-full h-full pixelated ${theme.icon}`}
+            className={`w-full h-full pixel-art ${theme.icon}`}
             draggable="false"
         />
       </div>
@@ -56,4 +52,4 @@ const DesktopIcon: React.FC<DesktopIconProps> = ({ app, onOpen, isLoggedIn, posi
   );
 };
 
-export default DesktopIcon;
+export default Icon;

@@ -1,22 +1,30 @@
-# Shadowfall
+i really hadnt participated in game jams before and neither had my teammates. we came into daydream as an opportunity to create something of ourselves. i had prior experience with a react-based tech stack so i chos that for the game.
+
+for the topic, we had decided to make a desktop emulator, rpg cryptic game. that sounds like a mouthful ik.
+me (aryan) and nikunj had participated in alot of crypts and were fascinated by them
+so, here's shadowfall, a narrative driven virtual desktop rpg game, where you step into the shoes of a woman, who got a laptop owned by an fbi agent and you're caught in a conspiracy.
+
+key features:
+sacrifice feature, sacrifice your integrity or your files, what is more important to you?
+it has an interactive storyline with a hacker called void.
+analyse files, decrypt evidence and find clues to solve void.
+
+ai assistance:
+debugging, repetitive tasks and boilerplates for components, bug fixing, the rest was done manually.
+
+the ai basically helped streamlining the process.
+the assets were not at all ai, and were fully human made as we spent a lot of time on the environments.
+
+some code is still left from what we planned due to a shortage of time :(
 
 Welcome to Shadowfall, a narrative-driven virtual desktop environment where you step into the shoes of an FBI agent caught in a web of cyber-conspiracy. The game combines a realistic desktop simulation with top-down RPG exploration, creating a unique and immersive experience.
 
-## Key Features
+ASSETS:
+https://limezu.itch.io/moderninteriors
+https://sscary.itch.io/the-adventurer-female
+https://trevor-pupkin.itch.io/tech-dungeon-roguelite
 
-*   **Dual Desktop Environments:** Switch between your personal desktop and a secure, retro-futuristic FBI virtual OS.
-*   **Interactive Storyline:** Engage with a mysterious hacker named "Void" through a secure messenger, make choices that impact your system's integrity, and uncover a deep-seated conspiracy.
-*   **Simulated Applications:** Analyze case files, view evidence, and manage your system through a suite of custom applications.
-*   **RPG Exploration:** Step away from the computer to explore physical locations, find clues, and advance the story.
-*   **Atmospheric Design:** Features a distinct "hacker" aesthetic with scanlines, glitch effects, and a dynamic soundtrack that responds to the game's state.
+Sounds from youtube
+Maps were made ourselves without AI
 
-## AI-Assisted Development
-
-This project was developed with the assistance of an AI partner, which was responsible for approximately 20% of the codebase. The AI's role was primarily focused on accelerating development by handling specific, well-defined tasks.
-
-AI was instrumental in:
-*   **Debugging:** Quickly identifying and fixing bugs, such as type mismatches and logical errors found in component props.
-*   **Repetitive Tasks & Boilerplate:** Generating boilerplate code for hooks like character movement, including physics constants for friction and acceleration. It also helped scaffold data structures, such as defining application constants and location data.
-*   **Rapid Prototyping:** Assisting in the initial creation of components and functions.
-
-The core creative and architectural work—including the narrative design, core game logic, UI/UX, and overall application structure—was led by human developers. The AI served as a powerful tool for streamlining the development process, allowing us to focus more on the creative aspects that make Shadowfall a unique experience.
+do 6+7 on the calculator !!!!

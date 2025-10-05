@@ -1,15 +1,8 @@
-
-
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { WindowInstance } from '../types';
-import { AUDIO_ASSETS } from '../assets';
+import { SFX } from '../assets';
 
-// --- Movement Physics ---
-// Max speed in pixels per frame.
 const MAX_SPEED = 1; 
-// How quickly the character reaches max speed. Lower is "floatier". (0 to 1)
-const ACCELERATION = 0.1; 
-// How quickly the character stops. Higher is more slippery. (0 to 1)
+const ACCEL = 0.1; 
 const FRICTION = 0.42;
 
 interface Bounds {
@@ -17,130 +10,118 @@ interface Bounds {
   height: number;
 }
 
-export const useCharacterMovement = (bounds: Bounds, initialPosition: { x: number; y: number }, playerSize: { width: number, height: number }) => {
-  const [position, setPosition] = useState(initialPosition);
-  const keys = useRef<Record<string, boolean>>({});
-  const velocity = useRef({ x: 0, y: 0 });
-  const animationFrameId = useRef<number>();
-  const walkingSoundRef = useRef<HTMLAudioElement | null>(null);
-  const isMovingRef = useRef(false);
+export interface Collider {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
-  // Initialize audio once on component mount
+export const useMovement = (bounds: Bounds, initialPos: { x: number; y: number }, size: { width: number, height: number }, colliders: Collider[]) => {
+  const [pos, setPos] = useState(initialPos);
+  const keys = useRef<Record<string, boolean>>({});
+  const vel = useRef({ x: 0, y: 0 });
+  const loopId = useRef<number>();
+  const walkSfx = useRef<HTMLAudioElement | null>(null);
+  const isMoving = useRef(false);
+
   useEffect(() => {
-    walkingSoundRef.current = new Audio(AUDIO_ASSETS.walk);
-    walkingSoundRef.current.loop = true;
-    walkingSoundRef.current.volume = 0.4;
+    walkSfx.current = new Audio(SFX.walk);
+    walkSfx.current.loop = true;
+    walkSfx.current.volume = 0.4;
     return () => {
-        // Cleanup audio when component unmounts
-        walkingSoundRef.current?.pause();
-        walkingSoundRef.current = null;
+        walkSfx.current?.pause();
+        walkSfx.current = null;
     }
   }, []);
 
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    // Prevent browser default actions for arrow keys (scrolling)
-    // FIX: Replaced .includes with .indexOf() > -1 for broader compatibility to fix a potential toolchain error.
-    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].indexOf(e.key.toLowerCase()) > -1) {
-        e.preventDefault();
-    }
+  const onKeyDown = useCallback((e: KeyboardEvent) => {
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key.toLowerCase())) e.preventDefault();
     keys.current[e.key.toLowerCase()] = true;
   }, []);
 
-  const handleKeyUp = useCallback((e: KeyboardEvent) => {
+  const onKeyUp = useCallback((e: KeyboardEvent) => {
     keys.current[e.key.toLowerCase()] = false;
   }, []);
 
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current);
-      }
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      if (loopId.current) cancelAnimationFrame(loopId.current);
     };
-  }, [handleKeyDown, handleKeyUp]);
+  }, [onKeyDown, onKeyUp]);
 
-  // Movement logic
   useEffect(() => {
-    const gameLoop = () => {
+    const update = () => {
       let dx = 0;
       let dy = 0;
 
-      // Determine movement direction
       if (keys.current['w'] || keys.current['arrowup']) dy -= 1;
       if (keys.current['s'] || keys.current['arrowdown']) dy += 1;
       if (keys.current['a'] || keys.current['arrowleft']) dx -= 1;
       if (keys.current['d'] || keys.current['arrowright']) dx += 1;
 
-      // Normalize diagonal movement to prevent faster speed
-      const length = Math.sqrt(dx * dx + dy * dy);
-      if (length > 0) {
-        dx = (dx / length);
-        dy = (dy / length);
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len > 0) { dx /= len; dy /= len; }
+
+      const targetVelX = dx * MAX_SPEED;
+      const targetVelY = dy * MAX_SPEED;
+
+      vel.current.x += (targetVelX - vel.current.x) * ACCEL;
+      vel.current.y += (targetVelY - vel.current.y) * ACCEL;
+
+      if (dx === 0) vel.current.x *= FRICTION;
+      if (dy === 0) vel.current.y *= FRICTION;
+
+      if (Math.abs(vel.current.x) < 0.01) vel.current.x = 0;
+      if (Math.abs(vel.current.y) < 0.01) vel.current.y = 0;
+
+      const movingNow = Math.abs(vel.current.x) > 0.05 || Math.abs(vel.current.y) > 0.05;
+
+      if (movingNow && !isMoving.current) {
+        walkSfx.current?.play().catch(e => {});
+        isMoving.current = true;
+      } else if (!movingNow && isMoving.current) {
+        walkSfx.current?.pause();
+        if (walkSfx.current) walkSfx.current.currentTime = 0;
+        isMoving.current = false;
       }
 
-      // Target velocity
-      const targetVX = dx * MAX_SPEED;
-      const targetVY = dy * MAX_SPEED;
+      setPos(prev => {
+        let newX = prev.x;
+        let newY = prev.y;
 
-      // Smoothly approach target velocity (acceleration)
-      velocity.current.x += (targetVX - velocity.current.x) * ACCELERATION;
-      velocity.current.y += (targetVY - velocity.current.y) * ACCELERATION;
+        const nextX = prev.x + vel.current.x;
+        const nextY = prev.y + vel.current.y;
 
-      // Apply friction if there's no input in that axis
-      if (dx === 0) {
-        velocity.current.x *= FRICTION;
-      }
-      if (dy === 0) {
-        velocity.current.y *= FRICTION;
-      }
+        const checkCollision = (x: number, y: number): boolean => {
+            const checkX = Math.floor(x + size.width / 2);
+            const checkY = Math.floor(y + size.height - 8);
 
-      // Stop movement if velocity is negligible to prevent endless tiny movements
-      if (Math.abs(velocity.current.x) < 0.01) velocity.current.x = 0;
-      if (Math.abs(velocity.current.y) < 0.01) velocity.current.y = 0;
+            for (const c of colliders) {
+                if (checkX >= c.x && checkX <= c.x + c.width && checkY >= c.y && checkY <= c.y + c.height) return true;
+            }
+            return false;
+        };
 
-      // Handle walking sound based on velocity
-      const isCurrentlyMoving = Math.abs(velocity.current.x) > 0.05 || Math.abs(velocity.current.y) > 0.05;
+        if (!checkCollision(nextX, prev.y)) newX = nextX;
+        if (!checkCollision(newX, nextY)) newY = nextY;
 
-      if (isCurrentlyMoving && !isMovingRef.current) {
-        walkingSoundRef.current?.play().catch(e => console.error("Audio play failed. User interaction might be required first.", e));
-        isMovingRef.current = true;
-      } else if (!isCurrentlyMoving && isMovingRef.current) {
-        walkingSoundRef.current?.pause();
-        if (walkingSoundRef.current) {
-          walkingSoundRef.current.currentTime = 0;
-        }
-        isMovingRef.current = false;
-      }
-
-      setPosition(prev => {
-        let newX = prev.x + velocity.current.x;
-        let newY = prev.y + velocity.current.y;
-
-        // Clamp position within bounds
-        newX = Math.max(0, Math.min(bounds.width - playerSize.width, newX));
-        newY = Math.max(0, Math.min(bounds.height - playerSize.height, newY));
+        newX = Math.max(0, Math.min(bounds.width - size.width, newX));
+        newY = Math.max(0, Math.min(bounds.height - size.height, newY));
         
-        // No need to update if position hasn't changed
-        if (prev.x === newX && prev.y === newY) {
-            return prev;
-        }
-
+        if (prev.x === newX && prev.y === newY) return prev;
         return { x: newX, y: newY };
       });
-      animationFrameId.current = requestAnimationFrame(gameLoop);
+      loopId.current = requestAnimationFrame(update);
     };
 
-    animationFrameId.current = requestAnimationFrame(gameLoop);
+    loopId.current = requestAnimationFrame(update);
+    return () => { if (loopId.current) cancelAnimationFrame(loopId.current); };
+  }, [bounds, size.width, size.height, colliders]);
 
-    return () => {
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current);
-      }
-    };
-  }, [bounds, playerSize.width, playerSize.height]);
-
-  return { position, velocity, setPosition };
+  return { pos, vel, setPos };
 };

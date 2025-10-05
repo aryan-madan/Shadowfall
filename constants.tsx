@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { AppDefinition } from './types';
-import { NORMAL_APP_ICONS, FBI_APP_ICONS } from './assets';
+import { PERSONAL_APP_ICONS, AGENT_APP_ICONS } from './assets';
 import {
     CaseFilesApp,
     EvidenceViewerApp,
@@ -13,84 +12,82 @@ import {
     TrashApp,
 } from './components/desktop/Apps';
 
-export const NORMAL_APPS: AppDefinition[] = [
+export const HOME_APPS: AppDefinition[] = [
   {
     id: 'notes',
     name: 'Notes',
-    icon: NORMAL_APP_ICONS.notes,
-    component: NotesApp,
-    defaultSize: { width: 350, height: 400 },
+    iconUrl: PERSONAL_APP_ICONS.notes,
+    Component: NotesApp,
+    initialSize: { width: 350, height: 400 },
   },
   {
     id: 'calculator',
     name: 'Calculator',
-    icon: NORMAL_APP_ICONS.calculator,
-    component: CalculatorApp,
-    defaultSize: { width: 300, height: 450 },
+    iconUrl: PERSONAL_APP_ICONS.calculator,
+    Component: CalculatorApp,
+    initialSize: { width: 300, height: 450 },
   },
   {
     id: 'browser',
     name: 'Web Browser',
-    icon: NORMAL_APP_ICONS.browser,
-    component: BrowserApp,
-    defaultSize: { width: 800, height: 600 },
+    iconUrl: PERSONAL_APP_ICONS.browser,
+    Component: BrowserApp,
+    initialSize: { width: 800, height: 600 },
   },
   {
     id: 'gallery',
     name: 'Photos',
-    icon: NORMAL_APP_ICONS.gallery,
-    component: GalleryApp,
-    defaultSize: { width: 600, height: 500 },
+    iconUrl: PERSONAL_APP_ICONS.gallery,
+    Component: GalleryApp,
+    initialSize: { width: 600, height: 500 },
   },
   {
     id: 'trash',
     name: 'Trash',
-    icon: NORMAL_APP_ICONS.trash,
-    component: TrashApp,
-    defaultSize: { width: 400, height: 300 },
+    iconUrl: PERSONAL_APP_ICONS.trash,
+    Component: TrashApp,
+    initialSize: { width: 400, height: 300 },
   },
   {
     id: 'secure_access',
     name: 'Secure Access',
-    icon: NORMAL_APP_ICONS.secure_access,
-    component: () => <></>,
+    iconUrl: PERSONAL_APP_ICONS.secure_access,
+    Component: () => <></>,
   },
 ];
 
 
-export const FBI_APPS: AppDefinition[] = [
+export const WORK_APPS: AppDefinition[] = [
   {
     id: 'case_files',
     name: 'Case Files',
-    icon: FBI_APP_ICONS.case_files,
-    component: CaseFilesApp,
-    defaultSize: { width: 700, height: 500 },
+    iconUrl: AGENT_APP_ICONS.case_files,
+    Component: CaseFilesApp,
+    initialSize: { width: 700, height: 500 },
   },
   {
     id: 'evidence_viewer',
     name: 'Evidence Viewer',
-    icon: FBI_APP_ICONS.evidence_viewer,
-    component: EvidenceViewerApp,
-    defaultSize: { width: 800, height: 600 },
+    iconUrl: AGENT_APP_ICONS.evidence_viewer,
+    Component: EvidenceViewerApp,
+    initialSize: { width: 800, height: 600 },
   },
   {
     id: 'secure_messenger',
     name: 'Secure Messenger',
-    icon: FBI_APP_ICONS.secure_messenger,
-    component: SecureMessengerApp,
-    defaultSize: { width: 450, height: 650 },
+    iconUrl: AGENT_APP_ICONS.secure_messenger,
+    Component: SecureMessengerApp,
+    initialSize: { width: 450, height: 650 },
   }
 ];
 
-export const ALL_OBJECTIVES = [
-    { text: "System online. Familiarize yourself with the OS by opening **all available applications**.", requiredProgress: 1 },
-    { text: "Good. Now check your **Secure Messenger** for an incoming transmission.", requiredProgress: 1.1 },
-    { text: "You have your first destination. Exit the office and use the **World Map** portal to travel to `warehouse_b7`.", requiredProgress: 1.2 },
-    { text: "Good. You found the first piece. Now check your **Case Files** for the truth I unlocked.", requiredProgress: 2 },
-    { text: "You have a new message. Open **Secure Messenger**.", requiredProgress: 2.1 },
-    { text: "Time for your next move. I sent you a new location in **Secure Messenger**. Use the **World Map** to get there.", requiredProgress: 2.2 },
-    { text: "Another breadcrumb. To decrypt the file, you must make a sacrifice in **Case Files**.", requiredProgress: 3 },
-    { text: "The final piece is close. Travel to the **Europa Data Center** and connect to the core network.", requiredProgress: 3.1 },
-    { text: "Connection established. The firewall is strong. A great sacrifice is needed to proceed. Go to the final **Case File**.", requiredProgress: 3.2 },
-    { text: "The system is yours. The final choice awaits in your **Case Files**.", requiredProgress: 4 },
+export const MISSIONS = [
+    { text: "System online. Familiarize yourself with the OS by opening **all available applications**.", progressRequirement: 1 },
+    { text: "Good. Now check your **Secure Messenger** for an incoming transmission.", progressRequirement: 1.1 },
+    { text: "You have your first destination. Use **Fast Travel** to get to the `Net-Dive Cyber Cafe`.", progressRequirement: 1.2 },
+    { text: "You've recovered the data fragments. Check your **Case Files** for the intel.", progressRequirement: 2 },
+    { text: "Void has sent another message. Open your **Secure Messenger**.", progressRequirement: 2.1 },
+    { text: "The first sacrifice is required. Access **Case File CYB-002** to proceed.", progressRequirement: 3.1 },
+    { text: "You've decrypted the file. A great sacrifice is needed to proceed. Go to **Case File CYB-003**.", progressRequirement: 3.2 },
+    { text: "The system is yours. The final choice awaits in **Case File CYB-003**.", progressRequirement: 4 },
 ];

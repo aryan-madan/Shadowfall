@@ -1,62 +1,53 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { WindowInstance } from '../types';
 
-interface UseDraggableProps {
+interface DragProps {
   id: string;
-  initialPosition: { x: number; y: number };
+  initialPos: { x: number; y: number };
   setWindows: React.Dispatch<React.SetStateAction<WindowInstance[]>>;
 }
 
-export const useDraggable = ({ id, initialPosition, setWindows }: UseDraggableProps) => {
+export const useDrag = ({ id, initialPos, setWindows }: DragProps) => {
   const [isDragging, setIsDragging] = useState(false);
-  const dragStartPos = useRef({ x: 0, y: 0 });
-  const windowStartPos = useRef({ x: initialPosition.x, y: initialPosition.y });
+  const dragStart = useRef({ x: 0, y: 0 });
+  const windowStart = useRef({ x: initialPos.x, y: initialPos.y });
 
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const onDragStart = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     setIsDragging(true);
-    dragStartPos.current = { x: e.clientX, y: e.clientY };
+    dragStart.current = { x: event.clientX, y: event.clientY };
     
-    // Find the current position from state to avoid stale closures
-    setWindows(prevWindows => {
-        const currentWindow = prevWindows.find(w => w.id === id);
-        if (currentWindow) {
-            windowStartPos.current = currentWindow.position;
-        }
-        return prevWindows;
+    setWindows(prev => {
+        const win = prev.find(w => w.id === id);
+        if (win) windowStart.current = win.pos;
+        return prev;
     });
 
   }, [id, setWindows]);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+  const onDrag = useCallback((event: MouseEvent) => {
     if (!isDragging) return;
-    const dx = e.clientX - dragStartPos.current.x;
-    const dy = e.clientY - dragStartPos.current.y;
+    const dx = event.clientX - dragStart.current.x;
+    const dy = event.clientY - dragStart.current.y;
     
-    setWindows(prevWindows =>
-      prevWindows.map(w =>
-        w.id === id
-          ? { ...w, position: { x: windowStartPos.current.x + dx, y: windowStartPos.current.y + dy } }
-          : w
+    setWindows(prev =>
+      prev.map(w =>
+        w.id === id ? { ...w, pos: { x: windowStart.current.x + dx, y: windowStart.current.y + dy } } : w
       )
     );
   }, [isDragging, id, setWindows]);
 
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
+  const onDragEnd = useCallback(() => { setIsDragging(false); }, []);
 
   useEffect(() => {
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mousemove', onDrag);
+      document.addEventListener('mouseup', onDragEnd);
     }
-
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mousemove', onDrag);
+      document.removeEventListener('mouseup', onDragEnd);
     };
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [isDragging, onDrag, onDragEnd]);
 
-  return { handleMouseDown, isDragging };
+  return { onDragStart, isDragging };
 };

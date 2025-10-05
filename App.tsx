@@ -1,491 +1,370 @@
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { WindowInstance, IconPositions, ConversationChoice, GameState, AppState } from './types';
-import { FBI_APPS, NORMAL_APPS, ALL_OBJECTIVES } from './constants';
-import { ALL_ASSET_URLS, playSound } from './assets';
-import { ALL_LOCATIONS } from './components/desktop/Apps';
+import { WindowInstance, IconPositions, DialogueChoice, SaveFile, GameScreen } from './types';
+import { WORK_APPS, HOME_APPS, MISSIONS } from './constants';
+import { ASSET_URLS, playSound, SFX } from './assets';
+import { LOCATIONS } from './components/desktop/Apps';
 import Desktop from './components/desktop/Desktop';
 import Taskbar from './components/desktop/Taskbar';
 import Window from './components/desktop/Window';
-import LoginScreen from './components/desktop/Login';
+import Login from './components/desktop/Login';
 import LoadingScreen from './components/menu/Loading';
-import RPGScene from './components/RPGScene';
-import SystemFailureScreen from './components/menu/Failure';
+import World from './components/RPGScene';
+import CrashScreen from './components/menu/Failure';
 import StartMenu from './components/menu/Start';
-import ObjectiveNotification from './components/desktop/Notification';
-import PauseMenu from './components/menu/Pause';
-import IntroScreen from './components/menu/Intro';
-import EndingScreen from './components/menu/Ending';
+import Notification from './components/desktop/Notification';
+import Pause from './components/menu/Pause';
+import Intro from './components/menu/Intro';
+import Ending from './components/menu/Ending';
+import FastTravel from './components/menu/Travel';
 
-const SAVE_KEY = 'shadowfall_savegame';
-const ADJECTIVES = ['Red', 'Shadow', 'Silent', 'Night', 'Cyber', 'Ghost', 'Zero', 'Dark'];
-const NOUNS = ['Fall', 'Protocol', 'Reaper', 'Storm', 'Fox', 'Spectre', 'Dawn', 'Blade'];
+const SAVE_KEY = 'shadowfall_save';
+const PW_ADJ = ['Vindertech', 'Tilted', 'Ender', 'Nether', 'Golden', 'Victory', 'Flank', 'Giga'];
+const PW_NOUNS = ['Scythe', 'Towers', 'Dragon', 'Rift', 'Scar', 'Royale', 'Creeper', 'Chad'];
 
 const generatePassword = () => {
-    const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
-    const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
+    const adj = PW_ADJ[Math.floor(Math.random() * PW_ADJ.length)];
+    const noun = PW_NOUNS[Math.floor(Math.random() * PW_NOUNS.length)];
     const num = Math.floor(Math.random() * 90) + 10;
     return `${adj.toUpperCase()}${noun.toUpperCase()}${num}`;
 };
 
 const App: React.FC = () => {
   const [windows, setWindows] = useState<WindowInstance[]>([]);
-  const [nextZIndex, setNextZIndex] = useState<number>(10);
-  const [activeWindowId, setActiveWindowId] = useState<string | null>(null);
-  const [appState, setAppState] = useState<AppState>('start_menu');
-  const [isLoginVisible, setIsLoginVisible] = useState<boolean>(false);
-  const [storyProgress, setStoryProgress] = useState<number>(0);
-  const [currentLocationId, setCurrentLocationId] = useState<string>('player_room');
+  const [zIndex, setZIndex] = useState<number>(10);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [screen, setScreen] = useState<GameScreen>('main_menu');
+  const [showLogin, setShowLogin] = useState<boolean>(false);
+  const [story, setStory] = useState<number>(0);
+  const [locationId, setLocationId] = useState<string>('player_room');
   const [iconPositions, setIconPositions] = useState<IconPositions>({});
-  const [systemIntegrity, setSystemIntegrity] = useState<number>(100);
-  const [isSystemCrashed, setIsSystemCrashed] = useState<boolean>(false);
-  const [madeChoices, setMadeChoices] = useState<Record<string, string>>({});
+  const [sysHealth, setSysHealth] = useState<number>(100);
+  const [isCrashed, setIsCrashed] = useState<boolean>(false);
+  const [choices, setChoices] = useState<Record<string, string>>({});
   const [isTakingDamage, setIsTakingDamage] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const prevIntegrity = useRef(systemIntegrity);
-  const [currentObjective, setCurrentObjective] = useState<string | null>(null);
-  const prevStoryProgress = useRef(storyProgress);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [hasSaveData, setHasSaveData] = useState(false);
+  const prevHealth = useRef(sysHealth);
+  const [mission, setMission] = useState<string | null>(null);
+  const prevStory = useRef(story);
+  const [gameLoaded, setGameLoaded] = useState(false);
+  const [hasSave, setHasSave] = useState(false);
   const [password, setPassword] = useState('');
   const [isPaused, setIsPaused] = useState(false);
-  const [openedFbiApps, setOpenedFbiApps] = useState<Set<string>>(new Set());
+  const [openedApps, setOpenedApps] = useState<Set<string>>(new Set());
   const [showIntro, setShowIntro] = useState<boolean>(false);
-  const [chosenEnding, setChosenEnding] = useState<'A' | 'B' | null>(null);
-  const [sacrificedSystems, setSacrificedSystems] = useState<string[]>([]);
+  const [ending, setEnding] = useState<'A' | 'B' | null>(null);
+  const [disabledSystems, setDisabledSystems] = useState<string[]>([]);
+  const [showTravel, setShowTravel] = useState(false);
+  const bgMusicRef = useRef<HTMLAudioElement | null>(null);
 
-  const isFbiMode = appState === 'fbi_desktop';
-  const currentApps = isFbiMode ? FBI_APPS : NORMAL_APPS;
+  const isAgentDesktop = screen === 'agent_desktop';
+  const apps = isAgentDesktop ? WORK_APPS : HOME_APPS;
 
-  const saveState = useCallback(() => {
-    if (!isLoaded) return;
-    const gameState: GameState = {
-      appState, storyProgress, systemIntegrity, madeChoices, password, currentLocationId,
-      openedFbiApps: Array.from(openedFbiApps),
-      sacrificedSystems,
-    };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
-    setHasSaveData(true);
-  }, [appState, storyProgress, systemIntegrity, madeChoices, password, currentLocationId, isLoaded, openedFbiApps, sacrificedSystems]);
-
-  const startNewGame = useCallback(() => {
-    const newPassword = generatePassword();
-    setStoryProgress(0);
-    setSystemIntegrity(100);
-    setMadeChoices({});
-    setPassword(newPassword);
-    setCurrentLocationId('player_room');
-    setWindows([]);
-    setActiveWindowId(null);
-    setIsSystemCrashed(false);
-    setIsLoginVisible(false);
-    setIsPaused(false);
-    setOpenedFbiApps(new Set());
-    setChosenEnding(null);
-    setSacrificedSystems([]);
-    setShowIntro(true);
-  }, []);
-
-  const loadState = useCallback(() => {
-    const savedData = localStorage.getItem(SAVE_KEY);
-    if (savedData) {
-      const gameState: GameState = JSON.parse(savedData);
-      
-      if (gameState.currentLocationId === 'fbi_hq') {
-        gameState.currentLocationId = 'player_room';
-      }
-      
-      setAppState(gameState.appState === 'ending' ? 'start_menu' : gameState.appState);
-      setStoryProgress(gameState.storyProgress);
-      setSystemIntegrity(gameState.systemIntegrity);
-      setMadeChoices(gameState.madeChoices);
-      setPassword(gameState.password || generatePassword());
-      setCurrentLocationId(gameState.currentLocationId);
-      setOpenedFbiApps(new Set(gameState.openedFbiApps || []));
-      setSacrificedSystems(gameState.sacrificedSystems || []);
-      setChosenEnding(null);
-      setHasSaveData(true);
-    } else {
-        setHasSaveData(false);
+  useEffect(() => {
+    bgMusicRef.current = new Audio(SFX.bg_music);
+    bgMusicRef.current.loop = true;
+    bgMusicRef.current.volume = 0.25;
+    return () => {
+        bgMusicRef.current?.pause();
+        bgMusicRef.current = null;
     }
-    setIsLoaded(true);
   }, []);
+
+  const playMusic = useCallback(() => { bgMusicRef.current?.play().catch(e => {}); }, []);
+  const pauseMusic = useCallback(() => { bgMusicRef.current?.pause(); }, []);
+  const stopMusic = useCallback(() => { if (bgMusicRef.current) { bgMusicRef.current.pause(); bgMusicRef.current.currentTime = 0; } }, []);
+
+  const saveGame = useCallback(() => {
+    if (!gameLoaded) return;
+    const data: SaveFile = {
+      screen, story, sysHealth, choices, password, locationId,
+      openedApps: Array.from(openedApps),
+      disabledSystems,
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    setHasSave(true);
+  }, [screen, story, sysHealth, choices, password, locationId, gameLoaded, openedApps, disabledSystems]);
+
+  const newGame = useCallback(() => {
+    const newPass = generatePassword();
+    setStory(0);
+    setSysHealth(100);
+    setChoices({});
+    setPassword(newPass);
+    setLocationId('player_room');
+    setWindows([]);
+    setActiveId(null);
+    setIsCrashed(false);
+    setShowLogin(false);
+    setIsPaused(false);
+    setOpenedApps(new Set());
+    setEnding(null);
+    setDisabledSystems([]);
+    setShowIntro(true);
+    playMusic();
+  }, [playMusic]);
+
+  const loadGame = useCallback(() => {
+    const savedJSON = localStorage.getItem(SAVE_KEY);
+    if (savedJSON) {
+      const data: SaveFile = JSON.parse(savedJSON);
+      if (data.locationId === 'fbi_hq') data.locationId = 'player_room';
+      setScreen(data.screen === 'game_ending' ? 'main_menu' : data.screen);
+      setStory(data.story);
+      setSysHealth(data.sysHealth);
+      setChoices(data.choices);
+      setPassword(data.password || generatePassword());
+      setLocationId(data.locationId);
+      setOpenedApps(new Set(data.openedApps || []));
+      setDisabledSystems(data.disabledSystems || []);
+      setEnding(null);
+      setHasSave(true);
+    } else {
+        setHasSave(false);
+    }
+    setGameLoaded(true);
+  }, []);
+  
+  const continueGame = useCallback(() => {
+    loadGame();
+    setScreen(prev => prev === 'main_menu' ? 'game_world' : prev);
+    playMusic();
+  }, [loadGame, playMusic]);
   
   const resetGame = () => {
     localStorage.removeItem(SAVE_KEY);
-    setHasSaveData(false);
-    startNewGame();
+    setHasSave(false);
+    newGame();
     setShowIntro(false);
-    setChosenEnding(null);
-    setAppState('start_menu');
+    setEnding(null);
+    setScreen('main_menu');
+    stopMusic();
   }
 
-  useEffect(() => {
-    loadState();
-  }, [loadState]);
+  useEffect(() => { loadGame(); }, [loadGame]);
+  useEffect(() => { saveGame(); }, [saveGame]);
 
   useEffect(() => {
-    saveState();
-  }, [saveState]);
-
-  useEffect(() => {
-    const initialPositions: IconPositions = {};
-    const desktopApps = appState === 'fbi_desktop' ? FBI_APPS : NORMAL_APPS;
-    desktopApps.forEach((app, index) => {
+    const icons: IconPositions = {};
+    const currentApps = screen === 'agent_desktop' ? WORK_APPS : HOME_APPS;
+    currentApps.forEach((app, index) => {
       const row = Math.floor(index / 10);
       const col = index % 10;
-      initialPositions[app.id] = { x: 16 + row * 120, y: 16 + col * 120 };
+      icons[app.id] = { x: 16 + row * 120, y: 16 + col * 120 };
     });
-    setIconPositions(initialPositions);
-  }, [appState]);
+    setIconPositions(icons);
+  }, [screen]);
 
   useEffect(() => {
-    if (appState === 'fbi_desktop') {
-      document.body.className = 'fbi-theme';
-    } else if (appState === 'normal_desktop') {
-      document.body.className = 'normal-theme';
-    } else {
-      document.body.className = '';
-    }
-  }, [appState]);
+    if (screen === 'agent_desktop') document.body.className = 'fbi-theme';
+    else if (screen === 'personal_desktop') document.body.className = 'day-theme';
+    else document.body.className = '';
+  }, [screen]);
   
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const onKey = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
-            if(appState !== 'start_menu' && appState !== 'ending' && !isLoginVisible && !isSystemCrashed && !showIntro) {
-                setIsPaused(p => !p);
+            if(screen !== 'main_menu' && screen !== 'game_ending' && !showLogin && !isCrashed && !showIntro) {
+                if (showTravel) setShowTravel(false);
+                else setIsPaused(p => !p);
             }
         }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [appState, isLoginVisible, isSystemCrashed, showIntro]);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [screen, showLogin, isCrashed, showIntro, showTravel]);
 
   useEffect(() => {
-      if (isLoaded && !showIntro && appState !== 'start_menu' && appState !== 'ending') {
+      if (gameLoaded && !showIntro && screen !== 'main_menu' && screen !== 'game_ending') {
           playSound(isPaused ? 'pause_in' : 'pause_out', 0.6);
       }
-  }, [isPaused, isLoaded, showIntro, appState]);
+      if (!gameLoaded || showIntro) return;
+      if (isPaused) pauseMusic();
+      else if (screen !== 'main_menu' && screen !== 'game_ending') playMusic();
+  }, [isPaused, gameLoaded, showIntro, screen, playMusic, pauseMusic]);
 
   useEffect(() => {
-    if (isFbiMode && systemIntegrity <= 0 && !isSystemCrashed) {
-      playSound('system_crash');
-      setIsSystemCrashed(true);
+    if ((isAgentDesktop && sysHealth <= 0 && !isCrashed) || screen === 'game_ending') {
+      stopMusic();
+      if (isAgentDesktop && !isCrashed) {
+        playSound('system_crash');
+        setIsCrashed(true);
+      }
     }
-    if (systemIntegrity < prevIntegrity.current) {
+    if (sysHealth < prevHealth.current) {
       playSound('system_damage', 0.7);
       setIsTakingDamage(true);
       setTimeout(() => setIsTakingDamage(false), 300);
     }
-    prevIntegrity.current = systemIntegrity;
-  }, [systemIntegrity, isFbiMode, isSystemCrashed]);
+    prevHealth.current = sysHealth;
+  }, [sysHealth, isAgentDesktop, isCrashed, stopMusic, screen]);
 
   useEffect(() => {
-    if (storyProgress !== prevStoryProgress.current) {
-        const objective = [...ALL_OBJECTIVES]
-            .reverse()
-            .find(obj => storyProgress >= obj.requiredProgress);
-        
-        if (objective && objective.text !== currentObjective) {
+    if (story !== prevStory.current) {
+        const m = [...MISSIONS].reverse().find(obj => story >= obj.progressRequirement);
+        if (m && m.text !== mission) {
             playSound('new_objective', 0.6);
-            setCurrentObjective(objective.text);
-        } else if (!objective) {
-            setCurrentObjective(null);
+            setMission(m.text);
+        } else if (!m) {
+            setMission(null);
         }
     }
-    prevStoryProgress.current = storyProgress;
-  }, [storyProgress, currentObjective]);
+    prevStory.current = story;
+  }, [story, mission]);
 
   useEffect(() => {
-    if (isFbiMode && storyProgress === 1 && openedFbiApps.size === FBI_APPS.length) {
-        handleAdvanceStory(0.1);
+    if (isAgentDesktop && story === 1 && openedApps.size === WORK_APPS.length) {
+        advanceStory(0.1);
     }
-  }, [openedFbiApps, storyProgress, isFbiMode]);
+  }, [openedApps, story, isAgentDesktop]);
   
-  const handleAdvanceStory = (amount: number) => {
-    setStoryProgress(prev => Math.max(prev, prev + amount));
-  }
+  const advanceStory = (amount: number) => { setStory(p => Math.max(p, p + amount)); }
 
   const openApp = useCallback((appId: string) => {
-    if (appId === 'secure_access') {
-      playSound('ui_click');
-      setIsLoginVisible(true);
-      return;
-    }
-
-    const app = currentApps.find(a => a.id === appId);
+    if (appId === 'secure_access') { playSound('ui_click'); setShowLogin(true); return; }
+    const app = apps.find(a => a.id === appId);
     if (!app) return;
-
-    if (isFbiMode) {
-        if (!openedFbiApps.has(appId)) {
-            setOpenedFbiApps(prev => new Set(prev).add(appId));
-        }
-        if (appId === 'case_files' && storyProgress === 2) {
-            handleAdvanceStory(0.1);
-        }
+    if (isAgentDesktop) {
+        if (!openedApps.has(appId)) setOpenedApps(p => new Set(p).add(appId));
+        if (appId === 'case_files' && story === 2) advanceStory(0.1);
     }
-
-    const existingWindow = windows.find(w => w.appId === appId && !w.isMinimized);
-    if (existingWindow) {
-      focusWindow(existingWindow.id);
-      return;
-    }
-    
+    const openWin = windows.find(w => w.appId === appId && !w.isMinimized);
+    if (openWin) { focusWindow(openWin.id); return; }
     playSound('window_open', 0.6);
-    const newWindowId = `win-${Date.now()}`;
-    const newWindow: WindowInstance = {
-      id: newWindowId,
-      appId: app.id,
-      title: app.name,
-      position: { x: Math.random() * 200 + 150, y: Math.random() * 100 + 50 },
-      size: { width: app.defaultSize?.width ?? 640, height: app.defaultSize?.height ?? 480 },
-      isMinimized: false,
-      isMaximized: false,
-      zIndex: nextZIndex,
+    const id = `win-${Date.now()}`;
+    const newWin: WindowInstance = {
+      id, appId: app.id, title: app.name,
+      pos: { x: Math.random() * 200 + 150, y: Math.random() * 100 + 50 },
+      size: { width: app.initialSize?.width ?? 640, height: app.initialSize?.height ?? 480 },
+      isMinimized: false, isMaximized: false, zIndex,
     };
-    
-    setWindows(prev => [...prev, newWindow]);
-    setNextZIndex(prev => prev + 1);
-    setActiveWindowId(newWindowId);
-  }, [windows, nextZIndex, currentApps, isFbiMode, openedFbiApps, storyProgress]);
+    setWindows(p => [...p, newWin]);
+    setZIndex(p => p + 1);
+    setActiveId(id);
+  }, [windows, zIndex, apps, isAgentDesktop, openedApps, story]);
 
   const closeWindow = useCallback((id: string) => {
     playSound('window_close', 0.6);
-    setWindows(prev => prev.map(w => w.id === id ? { ...w, isClosing: true } : w));
+    setWindows(p => p.map(w => w.id === id ? { ...w, isClosing: true } : w));
   }, []);
 
   const removeWindow = useCallback((id: string) => {
-    setWindows(prev => prev.filter(w => w.id !== id));
-    if (activeWindowId === id) {
-        setActiveWindowId(null);
-    }
-  }, [activeWindowId]);
+    setWindows(p => p.filter(w => w.id !== id));
+    if (activeId === id) setActiveId(null);
+  }, [activeId]);
 
   const focusWindow = useCallback((id: string) => {
-    if (id === activeWindowId) return;
-    setWindows(prev =>
-      prev.map(w =>
-        w.id === id ? { ...w, zIndex: nextZIndex, isMinimized: false } : w
-      )
-    );
-    setNextZIndex(prev => prev + 1);
-    setActiveWindowId(id);
-  }, [nextZIndex, activeWindowId]);
+    if (id === activeId) return;
+    setWindows(p => p.map(w => w.id === id ? { ...w, zIndex, isMinimized: false } : w));
+    setZIndex(p => p + 1);
+    setActiveId(id);
+  }, [zIndex, activeId]);
 
-  const toggleMinimize = useCallback((id: string) => {
+  const minimizeWindow = useCallback((id: string) => {
     playSound('window_minimize', 0.6);
-    setWindows(prev =>
-      prev.map(w => {
+    setWindows(p => p.map(w => {
         if (w.id === id) {
-          const isMinimized = !w.isMinimized;
-          if (isMinimized && activeWindowId === id) {
-              setActiveWindowId(null);
-          }
-          if (!isMinimized) {
-              focusWindow(id);
-          }
-          return { ...w, isMinimized };
+          const min = !w.isMinimized;
+          if (min && activeId === id) setActiveId(null);
+          if (!min) focusWindow(id);
+          return { ...w, isMinimized: min };
         }
         return w;
       })
     );
-  }, [activeWindowId, focusWindow]);
+  }, [activeId, focusWindow]);
 
-  const handleLoginAttempt = (passwordAttempt: string) => {
-    const success = passwordAttempt === password;
-    playSound(success ? 'login_success' : 'login_fail');
-    if (success) {
-      setAppState('fbi_desktop');
-      setIsLoginVisible(false);
+  const onAuth = (pass: string) => {
+    const ok = pass === password;
+    playSound(ok ? 'login_success' : 'login_fail');
+    if (ok) {
+      setScreen('agent_desktop');
+      setShowLogin(false);
       setWindows([]);
-      setActiveWindowId(null);
-      if (storyProgress < 1) {
-        setStoryProgress(1);
-      }
+      setActiveId(null);
+      if (story < 1) setStory(1);
     }
-    return success;
+    return ok;
   };
 
-  const handleLogout = () => {
-    playSound('logout');
-    setAppState('normal_desktop');
-    setWindows([]);
-    setActiveWindowId(null);
-  }
-
-  const handleReturnToRoom = () => {
-    setAppState('rpg');
-    setWindows([]);
-    setActiveWindowId(null);
-  }
+  const logout = () => { playSound('logout'); setScreen('personal_desktop'); setWindows([]); setActiveId(null); }
+  const leaveComputer = () => { setScreen('game_world'); setWindows([]); setActiveId(null); }
+  const useComputer = () => { setScreen('personal_desktop'); setWindows([]); setActiveId(null); }
   
-  const handleSacrifice = useCallback((systemId: string, integrityCost: number) => {
+  const disableSystem = useCallback((name: string, cost: number) => {
     playSound('system_damage', 0.8);
-    setSacrificedSystems(prev => [...prev, systemId]);
-    setSystemIntegrity(prev => Math.max(0, prev - integrityCost));
+    setDisabledSystems(p => [...p, name]);
+    setSysHealth(p => Math.max(0, p - cost));
   }, []);
 
-  const handleAccessLaptop = () => {
-    setAppState('normal_desktop');
-    setWindows([]);
-    setActiveWindowId(null);
-  }
-
-  const handleNavigate = (locationId: string) => {
-    setCurrentLocationId(locationId);
-    setAppState('rpg');
-  };
-
-  const handleFindClue = (clueId: string) => {
-    if (clueId === 'warehouse_terminal' && storyProgress < 2) {
-      setStoryProgress(2);
-    }
-    if (clueId === 'cafe_terminal' && storyProgress < 3) {
-      setStoryProgress(3);
-    }
-    if (clueId === 'europa_mainframe' && storyProgress < 3.2) {
-      setStoryProgress(3.2);
-    }
-    setAppState('fbi_desktop');
+  const onClueFound = (clueId: string) => {
+    if (clueId === 'cafe_terminal' && story < 2) setStory(2);
+    setScreen('agent_desktop');
   };
   
-  const handleChoice = (choice: ConversationChoice) => {
-    if (choice.conversationId === 'final_choice') {
-        setChosenEnding(choice.id as 'A' | 'B');
-        setAppState('ending');
-        return;
-    }
-
-    setMadeChoices(prev => ({...prev, [choice.conversationId]: choice.id}));
-    if (choice.integrityChange) {
-        setSystemIntegrity(prev => Math.max(0, Math.min(100, prev + choice.integrityChange)));
-    }
-    if (choice.storyProgressChange) {
-        setStoryProgress(prev => prev + choice.storyProgressChange);
-    }
+  const makeChoice = (choice: DialogueChoice) => {
+    if (choice.dialogueId === 'final_choice') { setEnding(choice.id as 'A' | 'B'); setScreen('game_ending'); return; }
+    setChoices(p => ({...p, [choice.dialogueId]: choice.id}));
+    if (choice.healthChange) setSysHealth(p => Math.max(0, Math.min(100, p + choice.healthChange)));
+    if (choice.progressChange) setStory(p => p + choice.progressChange);
   }
 
-  const handleIntroFinish = () => {
-    setShowIntro(false);
-    setAppState('rpg');
-  };
+  const onIntroDone = () => { setShowIntro(false); setScreen('game_world'); };
 
   const renderDesktop = () => (
     <>
-      <Desktop onOpenApp={openApp} apps={currentApps} isLoggedIn={isFbiMode} iconPositions={iconPositions}/>
-      
+      <Desktop onOpen={openApp} apps={apps} isAgentDesktop={isAgentDesktop} iconPositions={iconPositions}/>
       {windows.filter(w => !w.isMinimized).map(win => {
-        const app = currentApps.find(a => a.id === win.appId);
+        const app = apps.find(a => a.id === win.appId);
         if (!app) return null;
-        return (
-            <Window
-              key={win.id}
-              instance={win}
-              app={app}
-              onClose={closeWindow}
-              onRemove={removeWindow}
-              onFocus={focusWindow}
-              onMinimize={toggleMinimize}
-              setWindows={setWindows}
-              isActive={win.id === activeWindowId}
-              isLoggedIn={isFbiMode}
-              storyProgress={storyProgress}
-              onFindClue={handleFindClue}
-              currentLocationId={currentLocationId}
-              systemIntegrity={systemIntegrity}
-              madeChoices={madeChoices}
-              onChoice={handleChoice}
-              onAdvanceStory={handleAdvanceStory}
-              password={password}
-              sacrificedSystems={sacrificedSystems}
-              onSacrifice={handleSacrifice}
-            />
-        );
+        return (<Window key={win.id} win={win} app={app} onClose={closeWindow} onRemove={removeWindow} onFocus={focusWindow} onMinimize={minimizeWindow} setWindows={setWindows} isActive={win.id === activeId} isAgentDesktop={isAgentDesktop} story={story} onClueFound={onClueFound} locationId={locationId} sysHealth={sysHealth} choices={choices} onChoice={makeChoice} onAdvanceStory={advanceStory} password={password} disabledSystems={disabledSystems} onDisableSystem={disableSystem} />);
       })}
-      
-      <Taskbar 
-        openWindows={windows} 
-        onFocusWindow={focusWindow} 
-        onToggleMinimize={toggleMinimize} 
-        activeWindowId={activeWindowId}
-        isLoggedIn={isFbiMode}
-        onLogout={isFbiMode ? handleLogout : undefined}
-        onReturnToRoom={!isFbiMode ? handleReturnToRoom : undefined}
-        apps={currentApps}
-        systemIntegrity={systemIntegrity}
-        sacrificedSystems={sacrificedSystems}
-      />
+      <Taskbar windows={windows} onFocus={focusWindow} onMinimize={minimizeWindow} activeId={activeId} isAgentDesktop={isAgentDesktop} onLogout={isAgentDesktop ? logout : undefined} onExit={!isAgentDesktop ? leaveComputer : undefined} apps={apps} health={sysHealth} disabledSystems={disabledSystems} />
     </>
   );
 
-  const renderContent = () => {
-    if (!isLoaded) {
-        return null;
-    }
-    if (showIntro) {
-      return <IntroScreen onFinish={handleIntroFinish} />;
-    }
-    if (isSystemCrashed) {
-        return <SystemFailureScreen onReset={resetGame} />;
-    }
-    switch (appState) {
-      case 'start_menu':
-        return <StartMenu onNewGame={startNewGame} onContinue={() => {
-            loadState();
-            setAppState(prev => prev === 'start_menu' ? 'rpg' : prev);
-        }} hasSaveData={hasSaveData} />;
-      case 'ending':
-        return <EndingScreen ending={chosenEnding} onMainMenu={resetGame} />;
-      case 'rpg':
-        return <RPGScene 
-          onAccessLaptop={handleAccessLaptop} 
-          onFindClue={handleFindClue}
-          onNavigate={handleNavigate}
-          locationId={currentLocationId} 
-          storyProgress={storyProgress}
-        />;
-      case 'normal_desktop':
-      case 'fbi_desktop':
-        return renderDesktop();
-      default:
-        return null;
+  const renderScreen = () => {
+    if (!gameLoaded) return null;
+    if (showIntro) return <Intro onDone={onIntroDone} />;
+    if (isCrashed) return <CrashScreen onReset={resetGame} />;
+    switch (screen) {
+      case 'main_menu': return <StartMenu onNew={newGame} onContinue={continueGame} canContinue={hasSave} />;
+      case 'game_ending': return <Ending ending={ending} onMenu={resetGame} />;
+      case 'game_world': return <World onAccessComputer={useComputer} onClueFound={onClueFound} onOpenTravel={() => setShowTravel(true)} locationId={locationId} story={story} />;
+      case 'personal_desktop':
+      case 'agent_desktop': return renderDesktop();
+      default: return null;
     }
   };
   
-  const getIntegrityClass = () => {
-      if (!isFbiMode) return '';
-      if (systemIntegrity < 40) return 'integrity-critical';
-      if (systemIntegrity < 70) return 'integrity-unstable';
+  const healthClass = () => {
+      if (!isAgentDesktop) return '';
+      if (sysHealth < 40) return 'system-critical';
+      if (sysHealth < 70) return 'system-unstable';
       return 'integrity-stable';
   }
 
-  const mainClass = `w-screen h-screen overflow-hidden select-none ${isFbiMode ? 'text-gray-200' : ''} ${getIntegrityClass()}`;
-  
-  if (isLoading) {
-    return <LoadingScreen assetUrls={ALL_ASSET_URLS} onLoaded={() => setIsLoading(false)} />;
-  }
+  const className = `w-screen h-screen overflow-hidden select-none ${isAgentDesktop ? 'text-gray-200' : ''} ${healthClass()}`;
+  if (isLoading) return <LoadingScreen assets={ASSET_URLS} onDone={() => setIsLoading(false)} />;
 
   return (
-    <div className={mainClass}>
-      {isPaused && <PauseMenu onResume={() => setIsPaused(false)} onMainMenu={resetGame} />}
-      {isFbiMode && (
+    <div className={className}>
+      {isPaused && <Pause onResume={() => setIsPaused(false)} onMenu={resetGame} />}
+      {showTravel && (
+        <FastTravel scenes={LOCATIONS} locationId={locationId} story={story} onTravel={(id) => { setLocationId(id); setScreen('game_world'); setShowTravel(false); }} onClose={() => setShowTravel(false)} />
+      )}
+      {isAgentDesktop && (
         <>
-          <div className="vignette-overlay" />
-          <div className="scanline-overlay" />
-          <div className="absolute inset-0 bg-red-800 pointer-events-none transition-opacity duration-500" style={{ opacity: Math.max(0, (70 - systemIntegrity) / 100 * 0.4) }} />
+          <div className="vignette" />
+          <div className="scanlines" />
+          <div className="absolute inset-0 bg-red-800 pointer-events-none transition-opacity duration-500" style={{ opacity: Math.max(0, (70 - sysHealth) / 100 * 0.4) }} />
           {isTakingDamage && <div className="absolute inset-0 bg-red-500 pointer-events-none damage-flash z-[20000]" />}
-          {currentObjective && !sacrificedSystems.includes('OBJECTIVE_TRACKER') && (
-            <ObjectiveNotification 
-                objective={currentObjective} 
-                onClose={() => setCurrentObjective(null)}
-            />
+          {mission && !disabledSystems.includes('OBJECTIVE_TRACKER') && (
+            <Notification text={mission} onClose={() => setMission(null)} />
            )}
         </>
       )}
-      
-      {renderContent()}
-      
-      {isLoginVisible && <LoginScreen onLoginAttempt={handleLoginAttempt} onClose={() => setIsLoginVisible(false)} />}
+      {renderScreen()}
+      {showLogin && <Login onAuth={onAuth} onClose={() => setShowLogin(false)} />}
     </div>
   );
 };

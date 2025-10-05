@@ -13,7 +13,6 @@
       body {
         font-family: 'Jersey 10', sans-serif;
         font-size: 26px;
-        /* For smooth font rendering */
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
@@ -25,11 +24,11 @@
           linear-gradient(90deg, transparent 24%, rgba(255, 255, 255, .03) 25%, rgba(255, 255, 255, .03) 26%, transparent 27%, transparent 74%, rgba(255, 255, 255, .03) 75%, rgba(255, 255, 255, .03) 76%, transparent 77%, transparent);
         background-size: 100% 100%, 40px 40px, 40px 40px;
       }
-      body.normal-theme {
+      body.day-theme {
         background: linear-gradient(135deg, #d3d8e8 0%, #a7b7d1 100%);
       }
       
-      .vignette-overlay {
+      .vignette {
         position: absolute;
         top: 0;
         left: 0;
@@ -40,14 +39,14 @@
         z-index: 50;
         transition: box-shadow 1s ease-in-out;
       }
-      .integrity-unstable .vignette-overlay {
+      .system-unstable .vignette {
         box-shadow: inset 0 0 300px rgba(100,0,0,0.9);
       }
-      .integrity-critical .vignette-overlay {
+      .system-critical .vignette {
         box-shadow: inset 0 0 400px rgba(200,0,0,1);
       }
 
-      .scanline-overlay {
+      .scanlines {
         position: absolute;
         top: 0;
         left: 0;
@@ -63,16 +62,15 @@
         pointer-events: none;
         z-index: 50;
       }
-      .integrity-unstable .scanline-overlay {
+      .system-unstable .scanlines {
         animation-duration: 10s;
         background-size: 100% 3px;
       }
-      .integrity-critical .scanline-overlay {
+      .system-critical .scanlines {
         animation-duration: 2s;
         background-size: 100% 5px;
         opacity: 0.7;
       }
-
 
       @keyframes scanlines {
         from { background-position: 0 0; }
@@ -81,7 +79,7 @@
 
       .glitch {
         position: relative;
-        color: #ef4444; /* red-500 */
+        color: #ef4444;
       }
       .glitch::before,
       .glitch::after {
@@ -97,14 +95,14 @@
       .glitch::before {
         left: 2px;
         text-shadow: -2px 0 #ef4444;
-        animation: glitch-anim-1 2.5s infinite linear alternate-reverse;
+        animation: glitch-1 2.5s infinite linear alternate-reverse;
       }
       .glitch::after {
         left: -2px;
-        text-shadow: -2px 0 #22d3ee; /* cyan-400 */
-        animation: glitch-anim-2 2.5s infinite linear alternate-reverse;
+        text-shadow: -2px 0 #22d3ee;
+        animation: glitch-2 2.5s infinite linear alternate-reverse;
       }
-      @keyframes glitch-anim-1 {
+      @keyframes glitch-1 {
         0% { clip-path: inset(45% 0 56% 0); }
         20% { clip-path: inset(5% 0 90% 0); }
         40% { clip-path: inset(23% 0 33% 0); }
@@ -112,7 +110,7 @@
         80% { clip-path: inset(40% 0 45% 0); }
         100% { clip-path: inset(50% 0 30% 0); }
       }
-      @keyframes glitch-anim-2 {
+      @keyframes glitch-2 {
         0% { clip-path: inset(10% 0 85% 0); }
         20% { clip-path: inset(90% 0 5% 0); }
         40% { clip-path: inset(43% 0 38% 0); }
@@ -121,48 +119,35 @@
         100% { clip-path: inset(30% 0 60% 0); }
       }
 
-      .window-enter {
-        animation: scale-up 0.25s cubic-bezier(0.390, 0.575, 0.565, 1.000) both;
+      .win-enter {
+        animation: win-scale-up 0.25s cubic-bezier(0.390, 0.575, 0.565, 1.000) both;
       }
-      .window-exit {
-        animation: scale-down 0.2s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
-      }
-
-      @keyframes scale-up {
-        0% {
-          transform: scale(0.7);
-          opacity: 0;
-        }
-        100% {
-          transform: scale(1);
-          opacity: 1;
-        }
+      .win-exit {
+        animation: win-scale-down 0.2s cubic-bezier(0.250, 0.460, 0.450, 0.940) both;
       }
 
-      @keyframes scale-down {
-        0% {
-          transform: scale(1);
-          opacity: 1;
-        }
-        100% {
-          transform: scale(0.8);
-          opacity: 0;
-        }
+      @keyframes win-scale-up {
+        0% { transform: scale(0.7); opacity: 0; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+
+      @keyframes win-scale-down {
+        0% { transform: scale(1); opacity: 1; }
+        100% { transform: scale(0.8); opacity: 0; }
       }
       
-      .pixelated {
+      .pixel-art {
         image-rendering: pixelated;
         image-rendering: -moz-crisp-edges;
         image-rendering: crisp-edges;
       }
 
-      /* System Failure Animation */
-      @keyframes flicker-red {
+      @keyframes crash-flicker {
         0%, 100% { text-shadow: 0 0 5px #f00, 0 0 10px #f00, 0 0 20px #f00, 0 0 40px #f00; color: #ff9999; }
         50% { text-shadow: 0 0 2px #f00, 0 0 5px #f00, 0 0 10px #f00; color: #ff6666; }
       }
 
-      @keyframes screen-jump {
+      @keyframes crash-jump {
         0%, 100% { transform: translate(0, 0); }
         10% { transform: translate(-2px, 2px); }
         20% { transform: translate(2px, -2px); }
@@ -175,16 +160,15 @@
         90% { transform: translate(0, 2px); }
       }
 
-      /* Damage Flash Animation */
-      @keyframes flash-red-anim {
+      @keyframes damage-flash {
         0% { opacity: 0.7; }
         100% { opacity: 0; }
       }
       .damage-flash {
-        animation: flash-red-anim 0.3s ease-out forwards;
+        animation: damage-flash 0.3s ease-out forwards;
       }
       
-      @keyframes fade-in-bg {
+      @keyframes menu-fade-in {
           from {
               background-color: rgba(10, 15, 24, 0);
               backdrop-filter: blur(0px);
