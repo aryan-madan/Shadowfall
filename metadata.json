@@ -1,0 +1,5 @@
+{
+  "name": "Shadowfall game",
+  "description": "A virtual desktop environment styled as an FBI agent's laptop, featuring simulated applications like a terminal, case file viewer, and evidence tracker.",
+  "requestFramePermissions": []
+}
