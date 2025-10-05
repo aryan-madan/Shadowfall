@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { playSound } from '../../assets';
 
 interface PauseMenuProps {
   onResume: () => void;
@@ -7,6 +8,17 @@ interface PauseMenuProps {
 }
 
 const PauseMenu: React.FC<PauseMenuProps> = ({ onResume, onMainMenu }) => {
+
+  const handleResume = () => {
+    // Note: pause_out sound is played from App.tsx when isPaused state changes
+    onResume();
+  };
+
+  const handleMainMenu = () => {
+    playSound('ui_click');
+    onMainMenu();
+  };
+
   return (
     <div
       className="fixed inset-0 z-[15000] flex items-center justify-center"
@@ -18,13 +30,13 @@ const PauseMenu: React.FC<PauseMenuProps> = ({ onResume, onMainMenu }) => {
         </h1>
         <div className="mt-12 flex flex-col space-y-6">
           <button
-            onClick={onResume}
+            onClick={handleResume}
             className="menu-button text-3xl border-2 border-cyan-500 transition-all duration-300 px-10 py-3 rounded-sm font-bold"
           >
             RESUME
           </button>
           <button
-            onClick={onMainMenu}
+            onClick={handleMainMenu}
             className="menu-button-danger text-3xl border-2 border-red-500 transition-all duration-300 px-10 py-3 rounded-sm font-bold"
           >
             MAIN MENU

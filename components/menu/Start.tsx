@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { playSound } from '../../assets';
 
 interface StartMenuProps {
   onNewGame: () => void;
@@ -27,14 +28,14 @@ const StartMenu: React.FC<StartMenuProps> = ({ onNewGame, onContinue, hasSaveDat
         <div className="mt-20 flex flex-col items-center space-y-6">
           {hasSaveData && (
                <button
-                onClick={onContinue}
+                onClick={() => { playSound('ui_click'); onContinue(); }}
                 className="menu-button text-4xl border-2 border-cyan-500 transition-all duration-300 px-12 py-4 rounded-sm font-bold w-96"
               >
                 CONTINUE MISSION
               </button>
           )}
           <button
-            onClick={onNewGame}
+            onClick={() => { playSound('ui_click'); onNewGame(); }}
             className="menu-button text-4xl border-2 border-cyan-500 transition-all duration-300 px-12 py-4 rounded-sm font-bold w-96"
           >
             {hasSaveData ? 'NEW MISSION' : 'BEGIN MISSION'}

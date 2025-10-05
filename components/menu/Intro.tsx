@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { playSound } from '../../assets';
 
 interface IntroScreenProps {
   onFinish: () => void;
@@ -26,6 +27,11 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onFinish }) => {
     return () => clearInterval(typingInterval);
   }, []);
 
+  const handleFinish = () => {
+    playSound('ui_click');
+    onFinish();
+  };
+
   return (
     <div className="w-screen h-screen bg-black flex flex-col items-center justify-center text-gray-300 p-8">
         <div className="w-full max-w-4xl text-left">
@@ -37,7 +43,7 @@ const IntroScreen: React.FC<IntroScreenProps> = ({ onFinish }) => {
         {!isTyping && (
             <div className="mt-20">
                 <button
-                    onClick={onFinish}
+                    onClick={handleFinish}
                     className="menu-button text-3xl border-2 border-cyan-500 transition-all duration-300 px-10 py-3 rounded-sm font-bold animate-fade-in"
                 >
                     Continue...

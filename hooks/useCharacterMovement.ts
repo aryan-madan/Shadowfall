@@ -5,11 +5,11 @@ import { WindowInstance } from '../types';
 import { AUDIO_ASSETS } from '../assets';
 
 // --- Movement Physics ---
-// max speed in pixels per frame.
+// Max speed in pixels per frame.
 const MAX_SPEED = 1; 
-// how quickly the character reaches max speed. lower is "floatier". (0 to 1)
+// How quickly the character reaches max speed. Lower is "floatier". (0 to 1)
 const ACCELERATION = 0.1; 
-// how quickly the character stops. higher is more slippery. (0 to 1)
+// How quickly the character stops. Higher is more slippery. (0 to 1)
 const FRICTION = 0.42;
 
 interface Bounds {
@@ -25,21 +25,21 @@ export const useCharacterMovement = (bounds: Bounds, initialPosition: { x: numbe
   const walkingSoundRef = useRef<HTMLAudioElement | null>(null);
   const isMovingRef = useRef(false);
 
-  // initialize audio once on component mount
+  // Initialize audio once on component mount
   useEffect(() => {
     walkingSoundRef.current = new Audio(AUDIO_ASSETS.walk);
     walkingSoundRef.current.loop = true;
     walkingSoundRef.current.volume = 0.4;
     return () => {
-        // cleanup audio when component unmounts
+        // Cleanup audio when component unmounts
         walkingSoundRef.current?.pause();
         walkingSoundRef.current = null;
     }
   }, []);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    // prevent browser default actions for arrow keys (scrolling)
-    // FIX: replaced .includes with .indexOf() > -1 for broader compatibility to fix a potential toolchain error.
+    // Prevent browser default actions for arrow keys (scrolling)
+    // FIX: Replaced .includes with .indexOf() > -1 for broader compatibility to fix a potential toolchain error.
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].indexOf(e.key.toLowerCase()) > -1) {
         e.preventDefault();
     }
@@ -68,28 +68,28 @@ export const useCharacterMovement = (bounds: Bounds, initialPosition: { x: numbe
       let dx = 0;
       let dy = 0;
 
-      // determine movement direction
+      // Determine movement direction
       if (keys.current['w'] || keys.current['arrowup']) dy -= 1;
       if (keys.current['s'] || keys.current['arrowdown']) dy += 1;
       if (keys.current['a'] || keys.current['arrowleft']) dx -= 1;
       if (keys.current['d'] || keys.current['arrowright']) dx += 1;
 
-      // normalize diagonal movement to prevent faster speed
+      // Normalize diagonal movement to prevent faster speed
       const length = Math.sqrt(dx * dx + dy * dy);
       if (length > 0) {
         dx = (dx / length);
         dy = (dy / length);
       }
 
-      // target velocity
+      // Target velocity
       const targetVX = dx * MAX_SPEED;
       const targetVY = dy * MAX_SPEED;
 
-      // smoothly approach target velocity (acceleration)
+      // Smoothly approach target velocity (acceleration)
       velocity.current.x += (targetVX - velocity.current.x) * ACCELERATION;
       velocity.current.y += (targetVY - velocity.current.y) * ACCELERATION;
 
-      // apply friction if there's no input in that axis (physics smd)
+      // Apply friction if there's no input in that axis
       if (dx === 0) {
         velocity.current.x *= FRICTION;
       }
@@ -97,11 +97,11 @@ export const useCharacterMovement = (bounds: Bounds, initialPosition: { x: numbe
         velocity.current.y *= FRICTION;
       }
 
-      // stop movement if velocity is negligible to prevent endless tiny movements
+      // Stop movement if velocity is negligible to prevent endless tiny movements
       if (Math.abs(velocity.current.x) < 0.01) velocity.current.x = 0;
       if (Math.abs(velocity.current.y) < 0.01) velocity.current.y = 0;
 
-      // handle walking sound based on velocity
+      // Handle walking sound based on velocity
       const isCurrentlyMoving = Math.abs(velocity.current.x) > 0.05 || Math.abs(velocity.current.y) > 0.05;
 
       if (isCurrentlyMoving && !isMovingRef.current) {
@@ -119,11 +119,11 @@ export const useCharacterMovement = (bounds: Bounds, initialPosition: { x: numbe
         let newX = prev.x + velocity.current.x;
         let newY = prev.y + velocity.current.y;
 
-        // clamp position within bounds
+        // Clamp position within bounds
         newX = Math.max(0, Math.min(bounds.width - playerSize.width, newX));
         newY = Math.max(0, Math.min(bounds.height - playerSize.height, newY));
         
-        // no need to update if position hasn't changed
+        // No need to update if position hasn't changed
         if (prev.x === newX && prev.y === newY) {
             return prev;
         }
@@ -144,5 +144,3 @@ export const useCharacterMovement = (bounds: Bounds, initialPosition: { x: numbe
 
   return { position, velocity, setPosition };
 };
-
-// fuck physics

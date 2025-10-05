@@ -1,4 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
+import { playSound } from '../../assets';
 
 interface EndingScreenProps {
   ending: 'A' | 'B' | null;
@@ -68,6 +70,11 @@ const EndingScreen: React.FC<EndingScreenProps> = ({ ending, onMainMenu }) => {
     );
   }
 
+  const handleMainMenuClick = () => {
+    playSound('ui_click');
+    onMainMenu();
+  }
+
   return (
     <div className={`w-screen h-screen bg-black flex flex-col items-center justify-center p-8 transition-opacity duration-1000 animate-fade-in`}>
         <div className={`w-full max-w-4xl text-left border-l-4 pl-8 ${content.borderColor}`}>
@@ -80,7 +87,7 @@ const EndingScreen: React.FC<EndingScreenProps> = ({ ending, onMainMenu }) => {
         {isFinished && (
             <div className="mt-20">
                 <button
-                    onClick={onMainMenu}
+                    onClick={handleMainMenuClick}
                     className={`menu-button-ending text-3xl border-2 transition-all duration-300 px-10 py-3 rounded-sm font-bold animate-fade-in ${content.color}`}
                     style={{borderColor: 'currentColor'}}
                 >

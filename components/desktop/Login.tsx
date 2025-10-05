@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { playSound } from '../../assets';
 
 interface LoginScreenProps {
   onLoginAttempt: (password: string) => boolean;
@@ -17,6 +18,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginAttempt, onClose }) =>
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    playSound('ui_click');
     setError('');
     const success = onLoginAttempt(password);
     if (!success) {

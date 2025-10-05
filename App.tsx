@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { WindowInstance, IconPositions, RiskyActionConfig, ConversationChoice, GameState, AppState } from './types';
 import { FBI_APPS, NORMAL_APPS, ALL_OBJECTIVES } from './constants';
-import { ALL_ASSET_URLS } from './assets';
+import { ALL_ASSET_URLS, playSound } from './assets';
 import { ALL_LOCATIONS } from './components/desktop/Apps';
 import Desktop from './components/desktop/Desktop';
 import Taskbar from './components/desktop/Taskbar';
@@ -158,10 +158,18 @@ const App: React.FC = () => {
   }, [appState, isLoginVisible, isSystemCrashed, showIntro]);
 
   useEffect(() => {
+      if (isLoaded && !showIntro && appState !== 'start_menu' && appState !== 'ending') {
+          playSound(isPaused ? 'pause_in' : 'pause_out', 0.6);
+      }
+  }, [isPaused, isLoaded, showIntro, appState]);
+
+  useEffect(() => {
     if (isFbiMode && systemIntegrity <= 0 && !isSystemCrashed) {
+      playSound('system_crash');
       setIsSystemCrashed(true);
     }
     if (systemIntegrity < prevIntegrity.current) {
+      playSound('system_damage', 0.7);
       setIsTakingDamage(true);
       setTimeout(() => setIsTakingDamage(false), 300);
     }
@@ -174,14 +182,15 @@ const App: React.FC = () => {
             .reverse()
             .find(obj => storyProgress >= obj.requiredProgress);
         
-        if (objective) {
+        if (objective && objective.text !== currentObjective) {
+            playSound('new_objective', 0.6);
             setCurrentObjective(objective.text);
-        } else {
+        } else if (!objective) {
             setCurrentObjective(null);
         }
     }
     prevStoryProgress.current = storyProgress;
-  }, [storyProgress]);
+  }, [storyProgress, currentObjective]);
 
   useEffect(() => {
     if (isFbiMode && storyProgress === 1 && openedFbiApps.size === FBI_APPS.length) {
@@ -195,6 +204,7 @@ const App: React.FC = () => {
 
   const openApp = useCallback((appId: string) => {
     if (appId === 'secure_access') {
+      playSound('ui_click');
       setIsLoginVisible(true);
       return;
     }
@@ -217,6 +227,7 @@ const App: React.FC = () => {
       return;
     }
     
+    playSound('window_open', 0.6);
     const newWindowId = `win-${Date.now()}`;
     const newWindow: WindowInstance = {
       id: newWindowId,
@@ -235,6 +246,7 @@ const App: React.FC = () => {
   }, [windows, nextZIndex, currentApps, isFbiMode, openedFbiApps, storyProgress]);
 
   const closeWindow = useCallback((id: string) => {
+    playSound('window_close', 0.6);
     setWindows(prev => prev.map(w => w.id === id ? { ...w, isClosing: true } : w));
   }, []);
 
@@ -257,6 +269,7 @@ const App: React.FC = () => {
   }, [nextZIndex, activeWindowId]);
 
   const toggleMinimize = useCallback((id: string) => {
+    playSound('window_minimize', 0.6);
     setWindows(prev =>
       prev.map(w => {
         if (w.id === id) {
@@ -275,7 +288,9 @@ const App: React.FC = () => {
   }, [activeWindowId, focusWindow]);
 
   const handleLoginAttempt = (passwordAttempt: string) => {
-    if (passwordAttempt === password) {
+    const success = passwordAttempt === password;
+    playSound(success ? 'login_success' : 'login_fail');
+    if (success) {
       setAppState('fbi_desktop');
       setIsLoginVisible(false);
       setWindows([]);
@@ -283,12 +298,12 @@ const App: React.FC = () => {
       if (storyProgress < 1) {
         setStoryProgress(1);
       }
-      return true;
     }
-    return false;
+    return success;
   };
 
   const handleLogout = () => {
+    playSound('logout');
     setAppState('normal_desktop');
     setWindows([]);
     setActiveWindowId(null);

@@ -3,14 +3,16 @@
 import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { useCharacterMovement } from '../hooks/useCharacterMovement';
 import { ALL_LOCATIONS, LocationDefinition } from './desktop/Apps';
-import { PLAYER_GIFS, LAPTOP_ASSET, WAREHOUSE_BG_ASSET, TERMINAL_INTERACT_ASSET, CAFE_BG_ASSET, CAFE_PC_ASSET, PORTAL_ASSET, WORLD_HUB_BG_ASSET, FBI_HQ_BG_ASSET, DATACENTER_BG_ASSET, MAINFRAME_ASSET } from '../assets';
+import { PLAYER_GIFS, LAPTOP_ASSET, WAREHOUSE_BG_ASSET, TERMINAL_INTERACT_ASSET, CAFE_BG_ASSET, CAFE_PC_ASSET, PORTAL_ASSET, WORLD_HUB_BG_ASSET, FBI_HQ_BG_ASSET, DATACENTER_BG_ASSET, MAINFRAME_ASSET, playSound } from '../assets';
 
-// Player Assets
+// --- SCENE CONFIGURATION ---
+
+// Player sprite size (don't change unless you change the asset)
 const PLAYER_SPRITE_SIZE = { width: 48, height: 64 };
 
-
+// Scene dimensions (in pixels)
 const SCENE_SIZES = {
-    office: { width: 360, height: 360 },
+    office: { width: 180, height: 192 },
     warehouse: { width: 1600, height: 900 },
     cafe: { width: 1200, height: 800 },
     hub: { width: 1200, height: 1200 },
@@ -18,7 +20,33 @@ const SCENE_SIZES = {
     default: { width: 1200, height: 1200 }
 };
 
+// Zoom level of the camera
 const ZOOM_LEVEL = 5;
+
+// To edit the position of items like laptops, terminals, or portals,
+// simply adjust the `x` and `y` coordinates for the desired scene below.
+// The coordinates are pixels from the top-left corner of the scene.
+// For reference, scene dimensions are defined in SCENE_SIZES above.
+const SCENE_OBJECTS = {
+    office: {
+        laptop: { x: (180 / 2) + 40.5, y: 51.5, width: 24, height: 20 }, // Centered horizontally at top
+        exit: { x: (180 / 2) - 45, y: 192 - 10, width: 0, height: 0 } // Centered at bottom
+    },
+    warehouse: {
+        terminal: { x: 1600 - 32 - 100, y: 200, width: 32, height: 32 },
+        exit: { x: 64, y: (900 / 2) - 32, width: 64, height: 64 }
+    },
+    cafe: {
+        terminal: { x: 150, y: 350, width: 48, height: 48 },
+        exit: { x: 1200 - 64 * 2, y: 800 - 64 - 50, width: 64, height: 64 }
+    },
+    datacenter: {
+        mainframe: { x: (1600 / 2) - 64, y: 250, width: 128, height: 128 },
+        exit: { x: 64, y: 900 - 64 * 2, width: 64, height: 64 }
+    }
+};
+
+// --- END OF CONFIGURATION ---
 
 interface RPGSceneProps {
   onAccessLaptop: () => void;
@@ -46,17 +74,18 @@ const RPGScene: React.FC<RPGSceneProps> = ({ onAccessLaptop, onFindClue, onNavig
 
   const { position, velocity, setPosition: setPlayerPosition } = useCharacterMovement(sceneSize, initialPosition, PLAYER_SPRITE_SIZE);
   const [characterState, setCharacterState] = useState('idle');
-
+  
+  // State and refs for smoothed camera
   const [cameraPosition, setCameraPosition] = useState(initialPosition);
   const playerPositionRef = useRef(position);
   const animationFrameId = useRef<number>();
   
-  // force a re-render shortly after the component mounts or the location changes
-  // helps resolve timing issues where scene elements are misaligned on the initial paint
+  // This effect forces a re-render shortly after the component mounts or the location changes.
+  // This helps resolve timing issues where scene elements are misaligned on the initial paint.
   useEffect(() => {
     setIsSceneReady(false);
     const timer = setTimeout(() => {
-      // re-measure bounds just in case the layout shifted (works ig js re render)
+      // Re-measure bounds just in case the layout shifted
       if (containerRef.current) {
         setViewportBounds({
           width: containerRef.current.clientWidth,
@@ -64,10 +93,11 @@ const RPGScene: React.FC<RPGSceneProps> = ({ onAccessLaptop, onFindClue, onNavig
         });
       }
       setIsSceneReady(true);
-    }, 50); //
+    }, 50); // A small delay is enough for the DOM to settle.
     return () => clearTimeout(timer);
   }, [locationId]);
 
+  // When location changes, reset player and camera to the new initial position
   useEffect(() => {
     setPlayerPosition(initialPosition);
     setCameraPosition(initialPosition);
@@ -80,7 +110,7 @@ const RPGScene: React.FC<RPGSceneProps> = ({ onAccessLaptop, onFindClue, onNavig
 
   // Character animation state logic
   useEffect(() => {
-    // FIX: changed arrow function to a function declaration to resolve a potential toolchain error
+    // FIX: Changed arrow function to a function declaration to resolve a potential toolchain error.
     function determineState() {
         const vel = velocity.current;
         const threshold = 0.1;
@@ -109,7 +139,7 @@ const RPGScene: React.FC<RPGSceneProps> = ({ onAccessLaptop, onFindClue, onNavig
   
   // Camera smoothing loop
   useEffect(() => {
-    const LERP_FACTOR = 0.08; // smoothing factor, lower is smoother
+    const LERP_FACTOR = 0.08; // Smoothing factor; lower is smoother
 
     const updateCamera = () => {
       setCameraPosition(prevCamPos => {
@@ -122,10 +152,10 @@ const RPGScene: React.FC<RPGSceneProps> = ({ onAccessLaptop, onFindClue, onNavig
           if (prevCamPos.x !== targetPos.x || prevCamPos.y !== targetPos.y) {
             return targetPos;
           }
-          return prevCamPos; // no change needed
+          return prevCamPos; // No change needed
         }
 
-        // interpolate the camera position
+        // Interpolate the camera position
         const newX = prevCamPos.x + dx * LERP_FACTOR;
         const newY = prevCamPos.y + dy * LERP_FACTOR;
         
@@ -160,61 +190,37 @@ const RPGScene: React.FC<RPGSceneProps> = ({ onAccessLaptop, onFindClue, onNavig
   
   const scenePositions = useMemo(() => {
     if (!location || !location.sceneType) return null;
-    const portalSize = { width: 64, height: 64 };
     
-    switch (location.sceneType) {
-        case 'office': {
-            const laptopWidth = 48; const laptopHeight = 48;
-            return {
-              laptop: { x: 250, y: 160, width: laptopWidth, height: laptopHeight },
-              exit: { x: 60, y: 160, ...portalSize }
-            };
-        }
-        case 'warehouse': {
-            const terminalWidth = 32; const terminalHeight = 32;
-            return {
-                terminal: { x: sceneSize.width - terminalWidth - 100, y: 200, width: terminalWidth, height: terminalHeight },
-                exit: { x: portalSize.width, y: sceneSize.height / 2 - portalSize.height / 2, ...portalSize }
-            }
-        }
-        case 'cafe': {
-            const terminalWidth = 48; const terminalHeight = 48;
-            return {
-                terminal: { x: 150, y: 350, width: terminalWidth, height: terminalHeight },
-                exit: { x: sceneSize.width - portalSize.width * 2, y: sceneSize.height - portalSize.height - 50, ...portalSize }
-            }
-        }
-        case 'datacenter': {
-            const mainframeWidth = 128; const mainframeHeight = 128;
-            return {
-                mainframe: { x: sceneSize.width / 2 - mainframeWidth / 2, y: 250, width: mainframeWidth, height: mainframeHeight },
-                exit: { x: portalSize.width, y: sceneSize.height - portalSize.height * 2, ...portalSize }
-            }
-        }
-        case 'hub': {
-            const portals: (LocationDefinition & {pos: {x:number, y:number}})[] = [];
-            const availableLocations = Object.values(ALL_LOCATIONS).filter(l => l.id !== 'world_map' && storyProgress >= l.unlockedAt);
-            const numPortals = availableLocations.length;
-            const radiusX = sceneSize.width * 0.35;
-            const radiusY = sceneSize.height * 0.25;
-            const centerX = sceneSize.width / 2;
-            const centerY = sceneSize.height / 2;
-
-            availableLocations.forEach((loc, i) => {
-                const angle = (i / numPortals) * 2 * Math.PI;
-                portals.push({
-                    ...loc,
-                    pos: {
-                        x: centerX + radiusX * Math.cos(angle) - portalSize.width / 2,
-                        y: centerY + radiusY * Math.sin(angle) - portalSize.height / 2,
-                    }
-                });
-            });
-            return { portals, portalSize };
-        }
-        default: return {};
+    const definedPositions = SCENE_OBJECTS[location.sceneType as keyof typeof SCENE_OBJECTS];
+    if (definedPositions) {
+        return definedPositions;
     }
-  }, [sceneSize, location, storyProgress]);
+    
+    // Hub portals are generated dynamically based on story progress
+    if (location.sceneType === 'hub') {
+        const portalSize = { width: 64, height: 64 };
+        const portals: (LocationDefinition & {pos: {x:number, y:number}})[] = [];
+        const availableLocations = Object.values(ALL_LOCATIONS).filter(l => l.id !== 'world_map' && storyProgress >= l.unlockedAt);
+        const numPortals = availableLocations.length;
+        const radiusX = sceneSize.width * 0.35;
+        const radiusY = sceneSize.height * 0.25;
+        const centerX = sceneSize.width / 2;
+        const centerY = sceneSize.height / 2;
+
+        availableLocations.forEach((loc, i) => {
+            const angle = (i / numPortals) * 2 * Math.PI;
+            portals.push({
+                ...loc,
+                pos: {
+                    x: centerX + radiusX * Math.cos(angle) - portalSize.width / 2,
+                    y: centerY + radiusY * Math.sin(angle) - portalSize.height / 2,
+                }
+            });
+        });
+        return { portals, portalSize };
+    }
+    return {};
+  }, [location, storyProgress, sceneSize]);
 
   const interaction = useMemo(() => {
     if (!scenePositions || !location || !location.sceneType) return null;
@@ -229,25 +235,25 @@ const RPGScene: React.FC<RPGSceneProps> = ({ onAccessLaptop, onFindClue, onNavig
         return distance < threshold;
     }
 
-    if (scenePositions.laptop && checkProximity(scenePositions.laptop.x, scenePositions.laptop.y, scenePositions.laptop.width, scenePositions.laptop.height, 60)) {
+    if ('laptop' in scenePositions && scenePositions.laptop && checkProximity(scenePositions.laptop.x, scenePositions.laptop.y, scenePositions.laptop.width, scenePositions.laptop.height, 60)) {
         return { type: 'laptop', text: 'Press [E] to access' };
     }
     
-    if (scenePositions.terminal && checkProximity(scenePositions.terminal.x, scenePositions.terminal.y, scenePositions.terminal.width, scenePositions.terminal.height, 60)) {
+    if ('terminal' in scenePositions && scenePositions.terminal && checkProximity(scenePositions.terminal.x, scenePositions.terminal.y, scenePositions.terminal.width, scenePositions.terminal.height, 60)) {
         const type = location.sceneType === 'warehouse' ? 'terminal_warehouse' : 'terminal_cafe';
         const text = location.sceneType === 'warehouse' ? 'Press [E] to interact' : 'Press [E] to access PC';
         return { type, text };
     }
     
-    if (scenePositions.mainframe && checkProximity(scenePositions.mainframe.x, scenePositions.mainframe.y, scenePositions.mainframe.width, scenePositions.mainframe.height, 80)) {
+    if ('mainframe' in scenePositions && scenePositions.mainframe && checkProximity(scenePositions.mainframe.x, scenePositions.mainframe.y, scenePositions.mainframe.width, scenePositions.mainframe.height, 80)) {
         return { type: 'mainframe', text: 'Press [E] to connect to the core' };
     }
 
-    if (scenePositions.exit && checkProximity(scenePositions.exit.x, scenePositions.exit.y, scenePositions.exit.width, scenePositions.exit.height, 60)) {
+    if ('exit' in scenePositions && scenePositions.exit && checkProximity(scenePositions.exit.x, scenePositions.exit.y, scenePositions.exit.width, scenePositions.exit.height, 60)) {
         return { type: 'portal', text: 'Press [E] to enter World Map', destination: 'world_map' };
     }
 
-    if (location.sceneType === 'hub' && scenePositions.portals) {
+    if (location.sceneType === 'hub' && 'portals' in scenePositions && scenePositions.portals && 'portalSize' in scenePositions && scenePositions.portalSize) {
         for (const portal of scenePositions.portals) {
             if (checkProximity(portal.pos.x, portal.pos.y, scenePositions.portalSize.width, scenePositions.portalSize.height, 60)) {
                 return { type: 'portal', text: `Press [E] to travel to ${portal.name}`, destination: portal.id };
@@ -262,11 +268,16 @@ const RPGScene: React.FC<RPGSceneProps> = ({ onAccessLaptop, onFindClue, onNavig
     if (interaction) {
       const handleInteract = (e: KeyboardEvent) => {
         if (e.key.toLowerCase() === 'e') {
-          if (interaction.type === 'laptop') onAccessLaptop();
-          if (interaction.type === 'terminal_warehouse') onFindClue('warehouse_terminal');
-          if (interaction.type === 'terminal_cafe') onFindClue('cafe_terminal');
-          if (interaction.type === 'mainframe') onFindClue('europa_mainframe');
-          if (interaction.type === 'portal') onNavigate(interaction.destination);
+          if (interaction.type === 'portal') {
+            playSound('rpg_portal', 0.7);
+            onNavigate(interaction.destination);
+          } else {
+            playSound('rpg_interact', 0.7);
+            if (interaction.type === 'laptop') onAccessLaptop();
+            if (interaction.type === 'terminal_warehouse') onFindClue('warehouse_terminal');
+            if (interaction.type === 'terminal_cafe') onFindClue('cafe_terminal');
+            if (interaction.type === 'mainframe') onFindClue('europa_mainframe');
+          }
         }
       };
       window.addEventListener('keydown', handleInteract);
@@ -279,19 +290,35 @@ const RPGScene: React.FC<RPGSceneProps> = ({ onAccessLaptop, onFindClue, onNavig
       return { transform: `translate3d(0px, 0px, 0) scale(${ZOOM_LEVEL})` };
     }
 
-    const cameraCenterX = cameraPosition.x + PLAYER_SPRITE_SIZE.width / 2;
-    const cameraCenterY = cameraPosition.y + PLAYER_SPRITE_SIZE.height / 2;
+    const scaledSceneWidth = sceneSize.width * ZOOM_LEVEL;
+    const scaledSceneHeight = sceneSize.height * ZOOM_LEVEL;
+    let finalX, finalY;
 
-    let targetX = viewportBounds.width / 2 - cameraCenterX * ZOOM_LEVEL;
-    let targetY = viewportBounds.height / 2 - cameraCenterY * ZOOM_LEVEL;
+    // Handle horizontal positioning
+    if (scaledSceneWidth <= viewportBounds.width) {
+      // Scene is smaller than viewport, so center it
+      finalX = (viewportBounds.width - scaledSceneWidth) / 2;
+    } else {
+      // Scene is larger, so pan with camera, clamping at edges
+      const cameraCenterX = cameraPosition.x + PLAYER_SPRITE_SIZE.width / 2;
+      const targetX = viewportBounds.width / 2 - cameraCenterX * ZOOM_LEVEL;
+      const minX = viewportBounds.width - scaledSceneWidth;
+      const maxX = 0;
+      finalX = Math.max(minX, Math.min(maxX, targetX));
+    }
 
-    const minX = viewportBounds.width - sceneSize.width * ZOOM_LEVEL;
-    const minY = viewportBounds.height - sceneSize.height * ZOOM_LEVEL;
-    const maxX = 0;
-    const maxY = 0;
-
-    const finalX = Math.max(minX, Math.min(maxX, targetX));
-    const finalY = Math.max(minY, Math.min(maxY, targetY));
+    // Handle vertical positioning
+    if (scaledSceneHeight <= viewportBounds.height) {
+      // Scene is smaller than viewport, so center it
+      finalY = (viewportBounds.height - scaledSceneHeight) / 2;
+    } else {
+      // Scene is larger, so pan with camera, clamping at edges
+      const cameraCenterY = cameraPosition.y + PLAYER_SPRITE_SIZE.height / 2;
+      const targetY = viewportBounds.height / 2 - cameraCenterY * ZOOM_LEVEL;
+      const minY = viewportBounds.height - scaledSceneHeight;
+      const maxY = 0;
+      finalY = Math.max(minY, Math.min(maxY, targetY));
+    }
 
     return {
       transform: `translate3d(${finalX}px, ${finalY}px, 0) scale(${ZOOM_LEVEL})`,
@@ -343,6 +370,11 @@ const RPGScene: React.FC<RPGSceneProps> = ({ onAccessLaptop, onFindClue, onNavig
     }
   }
 
+  const renderSceneObject = (obj: any, type: string, asset: string, alt: string, className: string) => {
+    if (!obj) return null;
+    return <img src={asset} alt={alt} className={`absolute ${className}`} style={{ left: obj.x, top: obj.y, width: obj.width, height: obj.height }} />;
+  };
+
   return (
     <div 
         ref={containerRef} 
@@ -360,29 +392,16 @@ const RPGScene: React.FC<RPGSceneProps> = ({ onAccessLaptop, onFindClue, onNavig
             }}
         >
             {/* Scene specific items */}
-            {location.sceneType === 'office' && scenePositions.laptop && (
-                <>
-                    {/* Desk is now part of the background image */}
-                    <img src={LAPTOP_ASSET} alt="Laptop" className="absolute laptop-glow" style={{ left: scenePositions.laptop.x, top: scenePositions.laptop.y, width: scenePositions.laptop.width, height: scenePositions.laptop.height }} />
-                </>
-            )}
-            {location.sceneType === 'warehouse' && scenePositions.terminal && (
-                <img src={TERMINAL_INTERACT_ASSET} alt="Terminal" className="absolute terminal-glow" style={{ left: scenePositions.terminal.x, top: scenePositions.terminal.y, width: scenePositions.terminal.width, height: scenePositions.terminal.height }} />
-            )}
-            {location.sceneType === 'cafe' && scenePositions.terminal && (
-                <img src={CAFE_PC_ASSET} alt="Cyber Cafe PC" className="absolute laptop-glow" style={{ left: scenePositions.terminal.x, top: scenePositions.terminal.y, width: scenePositions.terminal.width, height: scenePositions.terminal.height }} />
-            )}
-            {location.sceneType === 'datacenter' && scenePositions.mainframe && (
-                <img src={MAINFRAME_ASSET} alt="Mainframe" className="absolute terminal-glow" style={{ left: scenePositions.mainframe.x, top: scenePositions.mainframe.y, width: scenePositions.mainframe.width, height: scenePositions.mainframe.height }} />
-            )}
-
+            {renderSceneObject((scenePositions as any).laptop, 'laptop', LAPTOP_ASSET, 'Laptop', 'laptop-glow')}
+            {renderSceneObject((scenePositions as any).terminal, 'terminal', location.sceneType === 'cafe' ? CAFE_PC_ASSET : TERMINAL_INTERACT_ASSET, 'Terminal', location.sceneType === 'cafe' ? 'laptop-glow' : 'terminal-glow')}
+            {renderSceneObject((scenePositions as any).mainframe, 'mainframe', MAINFRAME_ASSET, 'Mainframe', 'terminal-glow')}
+            
             {/* Portals and Exits */}
-            {scenePositions.exit && (
-                <img src={PORTAL_ASSET} alt="Exit Portal" className="absolute portal-glow" style={{ left: scenePositions.exit.x, top: scenePositions.exit.y, width: scenePositions.exit.width, height: scenePositions.exit.height }} />
-            )}
-            {location.sceneType === 'hub' && scenePositions.portals?.map(portal => (
+            {renderSceneObject((scenePositions as any).exit, 'exit', PORTAL_ASSET, 'Exit Portal', 'portal-glow')}
+
+            {'portals' in scenePositions && scenePositions.portals?.map(portal => (
                 <div key={portal.id} className="absolute" style={{ left: portal.pos.x, top: portal.pos.y }}>
-                    <img src={PORTAL_ASSET} alt={`Portal to ${portal.name}`} className="portal-glow" style={{ width: scenePositions.portalSize.width, height: scenePositions.portalSize.height }}/>
+                    <img src={PORTAL_ASSET} alt={`Portal to ${portal.name}`} className="portal-glow" style={{ width: (scenePositions as any).portalSize.width, height: (scenePositions as any).portalSize.height }}/>
                     <div className="text-center w-full absolute -bottom-5 text-cyan-200 text-base font-bold" style={{ textShadow: '0 0 5px black' }}>{portal.name}</div>
                 </div>
             ))}

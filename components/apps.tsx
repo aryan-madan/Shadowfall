@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { AppContentProps, ConversationChoice } from '../types';
-import { BROWSER_APP_IMAGES, GALLERY_APP_IMAGES, EVIDENCE_VIEWER_IMAGES } from '../assets';
+import { BROWSER_APP_IMAGES, GALLERY_APP_IMAGES, EVIDENCE_VIEWER_IMAGES, playSound } from '../assets';
 
 export interface LocationDefinition {
   id: string;
@@ -71,10 +71,12 @@ export const CaseFilesApp: React.FC<AppContentProps> = ({ storyProgress: story =
   const [text, setText] = useState<Record<string, string>>({});
 
   const crack = (id: string) => {
+    playSound('ui_click');
     if (!risk) return;
     setText(p => ({...p, [id]: 'DECRYPTING...'}));
     setTimeout(() => {
         const ok = risk({ successChance: 0.65, integrityCostSuccess: 5, integrityCostFailure: 15 });
+        playSound(ok ? 'decryption_success' : 'decryption_fail');
         if (ok) {
             setKeys(p => ({ ...p, [id]: true }));
             setText(p => ({...p, [id]: 'DECRYPTION SUCCESSFUL'}));
@@ -217,8 +219,13 @@ export const TerminalApp: React.FC<AppContentProps> = ({ storyProgress: story = 
     }
   }
 
-  const enter = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !busy) { run(text); setText(''); }
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !busy) {
+        run(text);
+        setText('');
+    } else if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Space') {
+        playSound('terminal_keystroke', 0.4, true);
+    }
   };
 
   return (
@@ -230,7 +237,7 @@ export const TerminalApp: React.FC<AppContentProps> = ({ storyProgress: story = 
       </div>
       <div className="flex items-center">
         <span>&gt;</span>
-        <input type="text" value={text} onChange={(e) => setText(e.target.value)} onKeyPress={enter} className="bg-transparent border-none text-green-400 w-full focus:outline-none ml-2" autoFocus disabled={busy} />
+        <input type="text" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={handleKeyDown} className="bg-transparent border-none text-green-400 w-full focus:outline-none ml-2" autoFocus disabled={busy} />
       </div>
     </div>
   );
@@ -295,11 +302,15 @@ const Bubble: React.FC<Message> = ({ sender, text, timestamp, align, isGlitch })
 };
 
 const Choices: React.FC<{options: readonly ConversationChoice[], pick: (c: ConversationChoice) => void}> = ({ options, pick }) => {
+    const handlePick = (c: ConversationChoice) => {
+        playSound('ui_click');
+        pick(c);
+    }
     return (
         <div className="my-4 border-t border-b border-cyan-700/50 py-2">
             <p className="text-center text-cyan-300 font-bold mb-2">Respond:</p>
             <div className="flex flex-col items-center space-y-2">
-                {options.map(c => (<button key={c.id} onClick={() => pick(c)} className="w-full text-left bg-slate-700 hover:bg-cyan-800/70 p-2 rounded transition-colors text-lg">{c.text}</button>))}
+                {options.map(c => (<button key={c.id} onClick={() => handlePick(c)} className="w-full text-left bg-slate-700 hover:bg-cyan-800/70 p-2 rounded transition-colors text-lg">{c.text}</button>))}
             </div>
         </div>
     );
@@ -307,6 +318,8 @@ const Choices: React.FC<{options: readonly ConversationChoice[], pick: (c: Conve
 
 export const SecureMessengerApp: React.FC<AppContentProps> = ({ storyProgress: story = 0, madeChoices: past = {}, onChoice: pick }) => {
   const end = useRef<HTMLDivElement>(null);
+  const prevChatLength = useRef(0);
+
   const chat = useMemo(() => {
     const list: (Message | { options: readonly ConversationChoice[], conversationId: string })[] = [];
     let done = true;
@@ -333,7 +346,17 @@ export const SecureMessengerApp: React.FC<AppContentProps> = ({ storyProgress: s
     return list;
   }, [story, past]);
   
-  useEffect(() => { setTimeout(() => { end.current?.scrollIntoView({ behavior: 'smooth' }); }, 100); }, [chat]);
+  useEffect(() => {
+      const lastItem = chat.length > 0 ? chat[chat.length-1] : null;
+      const isNewMessage = chat.length > prevChatLength.current && lastItem && !('options' in lastItem);
+
+      if (isNewMessage) {
+        playSound('new_message', 0.7);
+      }
+      prevChatLength.current = chat.length;
+
+      setTimeout(() => { end.current?.scrollIntoView({ behavior: 'smooth' }); }, 100); 
+  }, [chat]);
 
   return (
     <div className="h-full flex flex-col bg-slate-800 text-white">
@@ -432,30 +455,35 @@ export const CalculatorApp: React.FC = () => {
     const sign = () => { setDisplay(p => String(parseFloat(p) * -1)); };
     const perc = () => { setDisplay(p => String(parseFloat(p) / 100)); };
     const dot = () => { if (!display.includes('.')) setDisplay(p => p + '.'); }
+    
+    const buttonClick = (action: () => void) => {
+      playSound('ui_click');
+      action();
+    }
 
     return (
         <div className="h-full w-full bg-gray-800 flex flex-col p-2">
             <div className="h-1/5 bg-gray-700 text-white text-8xl text-right p-4 rounded-t-md flex items-end justify-end overflow-hidden"><p className="truncate">{display}</p></div>
             <div className="grid grid-cols-4 gap-2 flex-grow mt-2">
-                <button className={`${style1} ${style3}`} onClick={clear}>AC</button>
-                <button className={`${style1} ${style3}`} onClick={sign}>+/-</button>
-                <button className={`${style1} ${style3}`} onClick={perc}>%</button>
-                <button className={`${style1} ${style2}`} onClick={() => oper('/')}>÷</button>
-                <button className={style1} onClick={() => num('7')}>7</button>
-                <button className={style1} onClick={() => num('8')}>8</button>
-                <button className={style1} onClick={() => num('9')}>9</button>
-                <button className={`${style1} ${style2}`} onClick={() => oper('*')}>×</button>
-                <button className={style1} onClick={() => num('4')}>4</button>
-                <button className={style1} onClick={() => num('5')}>5</button>
-                <button className={style1} onClick={() => num('6')}>6</button>
-                <button className={`${style1} ${style2}`} onClick={() => oper('-')}>−</button>
-                <button className={style1} onClick={() => num('1')}>1</button>
-                <button className={style1} onClick={() => num('2')}>2</button>
-                <button className={style1} onClick={() => num('3')}>3</button>
-                <button className={`${style1} ${style2}`} onClick={() => oper('+')}>+</button>
-                <button className={`${style1} col-span-2`} onClick={() => num('0')}>0</button>
-                <button className={style1} onClick={dot}>.</button>
-                <button className={`${style1} ${style2}`} onClick={eq}>=</button>
+                <button className={`${style1} ${style3}`} onClick={() => buttonClick(clear)}>AC</button>
+                <button className={`${style1} ${style3}`} onClick={() => buttonClick(sign)}>+/-</button>
+                <button className={`${style1} ${style3}`} onClick={() => buttonClick(perc)}>%</button>
+                <button className={`${style1} ${style2}`} onClick={() => buttonClick(() => oper('/'))}>÷</button>
+                <button className={style1} onClick={() => buttonClick(() => num('7'))}>7</button>
+                <button className={style1} onClick={() => buttonClick(() => num('8'))}>8</button>
+                <button className={style1} onClick={() => buttonClick(() => num('9'))}>9</button>
+                <button className={`${style1} ${style2}`} onClick={() => buttonClick(() => oper('*'))}>×</button>
+                <button className={style1} onClick={() => buttonClick(() => num('4'))}>4</button>
+                <button className={style1} onClick={() => buttonClick(() => num('5'))}>5</button>
+                <button className={style1} onClick={() => buttonClick(() => num('6'))}>6</button>
+                <button className={`${style1} ${style2}`} onClick={() => buttonClick(() => oper('-'))}>−</button>
+                <button className={style1} onClick={() => buttonClick(() => num('1'))}>1</button>
+                <button className={style1} onClick={() => buttonClick(() => num('2'))}>2</button>
+                <button className={style1} onClick={() => buttonClick(() => num('3'))}>3</button>
+                <button className={`${style1} ${style2}`} onClick={() => buttonClick(() => oper('+'))}>+</button>
+                <button className={`${style1} col-span-2`} onClick={() => buttonClick(() => num('0'))}>0</button>
+                <button className={style1} onClick={() => buttonClick(dot)}>.</button>
+                <button className={`${style1} ${style2}`} onClick={() => buttonClick(eq)}>=</button>
             </div>
         </div>
     );
@@ -493,7 +521,13 @@ const Icon: React.FC<{className?: string}> = ({className}) => ( <svg xmlns="http
 export const TrashApp: React.FC = () => {
   const [count, setCount] = useState(0);
   const [seen, setSeen] = useState(false);
-  const click = () => { if (seen) return; const next = count + 1; setCount(next); if (next >= 7) setSeen(true); };
+  const click = () => { 
+    playSound('ui_click');
+    if (seen) return; 
+    const next = count + 1; 
+    setCount(next); 
+    if (next >= 7) setSeen(true); 
+  };
   return (
     <div className="h-full w-full bg-gray-100 text-black p-4 text-lg flex flex-col items-center justify-center text-center">
       {!seen ? (

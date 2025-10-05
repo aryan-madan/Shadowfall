@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { WindowInstance, AppDefinition } from '../../types';
+import { playSound } from '../../assets';
 
 interface TaskbarProps {
   openWindows: WindowInstance[];
@@ -25,6 +26,7 @@ const Taskbar: React.FC<TaskbarProps> = ({ openWindows, onFocusWindow, onToggleM
   }, []);
 
   const handleTaskbarClick = (window: WindowInstance) => {
+    playSound('ui_click');
     if (window.id === activeWindowId && !window.isMinimized) {
       onToggleMinimize(window.id);
     } else {
@@ -58,6 +60,16 @@ const Taskbar: React.FC<TaskbarProps> = ({ openWindows, onFocusWindow, onToggleM
 
   const theme = isLoggedIn ? fbiTheme : normalTheme;
 
+  const handleLogoutClick = () => {
+      playSound('ui_click');
+      onLogout?.();
+  }
+  
+  const handleReturnToRoomClick = () => {
+      playSound('ui_click');
+      onReturnToRoom?.();
+  }
+
   return (
     <div className={`absolute bottom-0 left-0 right-0 h-12 flex items-center justify-between px-2 z-[9999] ${theme.bar}`}>
       <div className="flex items-center space-x-2 h-full py-1.5">
@@ -90,8 +102,8 @@ const Taskbar: React.FC<TaskbarProps> = ({ openWindows, onFocusWindow, onToggleM
                 SYS-INTEGRITY: {systemIntegrity}%
             </div>
         )}
-        {isLoggedIn && onLogout && <button onClick={onLogout} className={theme.logout}>LOGOUT</button>}
-        {!isLoggedIn && onReturnToRoom && <button onClick={onReturnToRoom} className={theme.logout}>Step Away</button>}
+        {isLoggedIn && onLogout && <button onClick={handleLogoutClick} className={theme.logout}>LOGOUT</button>}
+        {!isLoggedIn && onReturnToRoom && <button onClick={handleReturnToRoomClick} className={theme.logout}>Step Away</button>}
         <div className={`pr-2 text-lg ${theme.time}`}>
           {currentTime.toLocaleTimeString()}
         </div>

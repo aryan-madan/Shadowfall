@@ -17,6 +17,7 @@ export const useDraggable = ({ id, initialPosition, setWindows }: UseDraggablePr
     setIsDragging(true);
     dragStartPos.current = { x: e.clientX, y: e.clientY };
     
+    // Find the current position from state to avoid stale closures
     setWindows(prevWindows => {
         const currentWindow = prevWindows.find(w => w.id === id);
         if (currentWindow) {

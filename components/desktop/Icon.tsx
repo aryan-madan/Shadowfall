@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { AppDefinition } from '../../types';
+import { playSound } from '../../assets';
 
 interface DesktopIconProps {
   app: AppDefinition;
@@ -25,6 +26,11 @@ const DesktopIcon: React.FC<DesktopIconProps> = ({ app, onOpen, isLoggedIn, posi
 
   const theme = isLoggedIn ? fbiClasses : normalClasses;
 
+  const handleOpen = () => {
+    playSound('ui_click');
+    onOpen();
+  };
+
   return (
     <div
       className={`absolute flex flex-col items-center p-2 w-28 h-28 justify-start text-center cursor-pointer rounded-md transition-all duration-150 ${theme.container}`}
@@ -32,10 +38,10 @@ const DesktopIcon: React.FC<DesktopIconProps> = ({ app, onOpen, isLoggedIn, posi
         left: position.x,
         top: position.y,
       }}
-      onDoubleClick={onOpen}
-      onClick={onOpen}
+      onDoubleClick={handleOpen}
+      onClick={handleOpen}
       tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && onOpen()}
+      onKeyDown={(e) => e.key === 'Enter' && handleOpen()}
     >
       <div className={`w-12 h-12 mb-2 flex items-center justify-center`}>
         <img 
