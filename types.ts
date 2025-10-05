@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export interface RiskyActionConfig {
@@ -25,6 +26,8 @@ export interface AppContentProps {
   onChoice?: (choice: ConversationChoice) => void;
   onAdvanceStory?: (amount: number) => void;
   password?: string;
+  sacrificedSystems?: string[];
+  onSacrifice?: (systemId: string, integrityCost: number) => void;
 }
 
 export interface AppDefinition {
@@ -59,4 +62,5 @@ export interface GameState {
   password?: string;
   currentLocationId: string;
   openedFbiApps?: string[];
+  sacrificedSystems?: string[];
 }

@@ -13,9 +13,10 @@ interface TaskbarProps {
   onReturnToRoom?: () => void;
   apps: AppDefinition[];
   systemIntegrity?: number;
+  sacrificedSystems?: string[];
 }
 
-const Taskbar: React.FC<TaskbarProps> = ({ openWindows, onFocusWindow, onToggleMinimize, activeWindowId, isLoggedIn, onLogout, onReturnToRoom, apps, systemIntegrity = 100 }) => {
+const Taskbar: React.FC<TaskbarProps> = ({ openWindows, onFocusWindow, onToggleMinimize, activeWindowId, isLoggedIn, onLogout, onReturnToRoom, apps, systemIntegrity = 100, sacrificedSystems = [] }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -59,6 +60,7 @@ const Taskbar: React.FC<TaskbarProps> = ({ openWindows, onFocusWindow, onToggleM
   }
 
   const theme = isLoggedIn ? fbiTheme : normalTheme;
+  const integrityMonitorOffline = sacrificedSystems.includes('INTEGRITY_MONITOR');
 
   const handleLogoutClick = () => {
       playSound('ui_click');
@@ -98,8 +100,8 @@ const Taskbar: React.FC<TaskbarProps> = ({ openWindows, onFocusWindow, onToggleM
       </div>
       <div className="flex items-center space-x-4">
         {isLoggedIn && (
-            <div className={`text-lg font-bold transition-colors ${getIntegrityStyles()}`}>
-                SYS-INTEGRITY: {systemIntegrity}%
+            <div className={`text-lg font-bold transition-colors ${integrityMonitorOffline ? 'text-red-500 glitch' : getIntegrityStyles()}`} data-text="SYS-INTEGRITY: UNKNOWN">
+                {integrityMonitorOffline ? 'SYS-INTEGRITY: UNKNOWN' : `SYS-INTEGRITY: ${systemIntegrity}%`}
             </div>
         )}
         {isLoggedIn && onLogout && <button onClick={handleLogoutClick} className={theme.logout}>LOGOUT</button>}

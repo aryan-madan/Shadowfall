@@ -38,7 +38,6 @@ export const NORMAL_APP_ICONS = {
 
 export const FBI_APP_ICONS = {
     case_files: '/assets/icons/fbi/case_files.png',
-    terminal: '/assets/icons/fbi/terminal.png',
     evidence_viewer: '/assets/icons/fbi/evidence_viewer.png',
     secure_messenger: '/assets/icons/fbi/secure_messenger.png',
 };
@@ -85,7 +84,7 @@ export const AUDIO_ASSETS = {
     decryption_success: '/assets/audio/decryption_success.mp3',
     decryption_fail: '/assets/audio/decryption_fail.mp3',
     system_damage: '/assets/audio/system_damage.mp3',
-    system_crash: '/assets/audio/system_crash.mp3',
+    system_crash: '/assets/audio/system_crash.wav',
     pause_in: '/assets/audio/pause_in.mp3',
     pause_out: '/assets/audio/pause_out.mp3',
 

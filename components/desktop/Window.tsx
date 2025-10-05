@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { WindowInstance, AppDefinition, AppContentProps, RiskyActionConfig, ConversationChoice } from '../../types';
+import { WindowInstance, AppDefinition, AppContentProps, ConversationChoice } from '../../types';
 import { useDraggable } from '../../hooks/useDraggable';
 
 interface WindowProps {
@@ -17,12 +17,12 @@ interface WindowProps {
   onFindClue?: (clueId: string) => void;
   currentLocationId?: string;
   systemIntegrity?: number;
-  onRiskyAction?: (config: RiskyActionConfig) => boolean;
-  onRepairSystem?: (amount: number) => void;
   madeChoices?: Record<string, string>;
   onChoice?: (choice: ConversationChoice) => void;
   onAdvanceStory?: (amount: number) => void;
   password?: string;
+  sacrificedSystems?: string[];
+  onSacrifice?: (systemId: string, integrityCost: number) => void;
 }
 
 const fbiTheme = {
@@ -72,8 +72,8 @@ const Window: React.FC<WindowProps> = (props) => {
   const { 
       instance, app, onClose, onRemove, onFocus, onMinimize, setWindows, 
       isActive, isLoggedIn, storyProgress, onFindClue, currentLocationId,
-      systemIntegrity, onRiskyAction, onRepairSystem, madeChoices, onChoice, onAdvanceStory,
-      password,
+      systemIntegrity, madeChoices, onChoice, onAdvanceStory,
+      password, sacrificedSystems, onSacrifice
   } = props;
 
   const { id, position, size, zIndex, isClosing } = instance;
@@ -87,12 +87,12 @@ const Window: React.FC<WindowProps> = (props) => {
     onFindClue,
     currentLocationId,
     systemIntegrity,
-    onRiskyAction,
-    onRepairSystem,
     madeChoices,
     onChoice,
     onAdvanceStory,
     password,
+    sacrificedSystems,
+    onSacrifice,
   };
   
   const handleAnimationEnd = (e: React.AnimationEvent) => {

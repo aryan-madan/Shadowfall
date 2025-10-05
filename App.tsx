@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { WindowInstance, IconPositions, RiskyActionConfig, ConversationChoice, GameState, AppState } from './types';
+import { WindowInstance, IconPositions, ConversationChoice, GameState, AppState } from './types';
 import { FBI_APPS, NORMAL_APPS, ALL_OBJECTIVES } from './constants';
 import { ALL_ASSET_URLS, playSound } from './assets';
 import { ALL_LOCATIONS } from './components/desktop/Apps';
@@ -52,6 +52,7 @@ const App: React.FC = () => {
   const [openedFbiApps, setOpenedFbiApps] = useState<Set<string>>(new Set());
   const [showIntro, setShowIntro] = useState<boolean>(false);
   const [chosenEnding, setChosenEnding] = useState<'A' | 'B' | null>(null);
+  const [sacrificedSystems, setSacrificedSystems] = useState<string[]>([]);
 
   const isFbiMode = appState === 'fbi_desktop';
   const currentApps = isFbiMode ? FBI_APPS : NORMAL_APPS;
@@ -61,10 +62,11 @@ const App: React.FC = () => {
     const gameState: GameState = {
       appState, storyProgress, systemIntegrity, madeChoices, password, currentLocationId,
       openedFbiApps: Array.from(openedFbiApps),
+      sacrificedSystems,
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
     setHasSaveData(true);
-  }, [appState, storyProgress, systemIntegrity, madeChoices, password, currentLocationId, isLoaded, openedFbiApps]);
+  }, [appState, storyProgress, systemIntegrity, madeChoices, password, currentLocationId, isLoaded, openedFbiApps, sacrificedSystems]);
 
   const startNewGame = useCallback(() => {
     const newPassword = generatePassword();
@@ -80,6 +82,7 @@ const App: React.FC = () => {
     setIsPaused(false);
     setOpenedFbiApps(new Set());
     setChosenEnding(null);
+    setSacrificedSystems([]);
     setShowIntro(true);
   }, []);
 
@@ -99,6 +102,7 @@ const App: React.FC = () => {
       setPassword(gameState.password || generatePassword());
       setCurrentLocationId(gameState.currentLocationId);
       setOpenedFbiApps(new Set(gameState.openedFbiApps || []));
+      setSacrificedSystems(gameState.sacrificedSystems || []);
       setChosenEnding(null);
       setHasSaveData(true);
     } else {
@@ -199,7 +203,7 @@ const App: React.FC = () => {
   }, [openedFbiApps, storyProgress, isFbiMode]);
   
   const handleAdvanceStory = (amount: number) => {
-    setStoryProgress(prev => prev + amount);
+    setStoryProgress(prev => Math.max(prev, prev + amount));
   }
 
   const openApp = useCallback((appId: string) => {
@@ -314,18 +318,11 @@ const App: React.FC = () => {
     setWindows([]);
     setActiveWindowId(null);
   }
-
-  const handleRiskyAction = useCallback((config: RiskyActionConfig): boolean => {
-    const isSuccess = Math.random() < config.successChance;
-    const integrityCost = isSuccess ? config.integrityCostSuccess : config.integrityCostFailure;
-    
+  
+  const handleSacrifice = useCallback((systemId: string, integrityCost: number) => {
+    playSound('system_damage', 0.8);
+    setSacrificedSystems(prev => [...prev, systemId]);
     setSystemIntegrity(prev => Math.max(0, prev - integrityCost));
-
-    return isSuccess;
-  }, []);
-
-  const repairSystem = useCallback((amount: number) => {
-    setSystemIntegrity(prev => Math.min(100, prev + amount));
   }, []);
 
   const handleAccessLaptop = () => {
@@ -396,12 +393,12 @@ const App: React.FC = () => {
               onFindClue={handleFindClue}
               currentLocationId={currentLocationId}
               systemIntegrity={systemIntegrity}
-              onRiskyAction={handleRiskyAction}
-              onRepairSystem={repairSystem}
               madeChoices={madeChoices}
               onChoice={handleChoice}
               onAdvanceStory={handleAdvanceStory}
               password={password}
+              sacrificedSystems={sacrificedSystems}
+              onSacrifice={handleSacrifice}
             />
         );
       })}
@@ -416,6 +413,7 @@ const App: React.FC = () => {
         onReturnToRoom={!isFbiMode ? handleReturnToRoom : undefined}
         apps={currentApps}
         systemIntegrity={systemIntegrity}
+        sacrificedSystems={sacrificedSystems}
       />
     </>
   );
@@ -476,7 +474,7 @@ const App: React.FC = () => {
           <div className="scanline-overlay" />
           <div className="absolute inset-0 bg-red-800 pointer-events-none transition-opacity duration-500" style={{ opacity: Math.max(0, (70 - systemIntegrity) / 100 * 0.4) }} />
           {isTakingDamage && <div className="absolute inset-0 bg-red-500 pointer-events-none damage-flash z-[20000]" />}
-          {currentObjective && (
+          {currentObjective && !sacrificedSystems.includes('OBJECTIVE_TRACKER') && (
             <ObjectiveNotification 
                 objective={currentObjective} 
                 onClose={() => setCurrentObjective(null)}

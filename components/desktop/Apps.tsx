@@ -1,6 +1,5 @@
 
-
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AppContentProps, ConversationChoice } from '../../types';
 import { BROWSER_APP_IMAGES, GALLERY_APP_IMAGES, EVIDENCE_VIEWER_IMAGES, playSound } from '../../assets';
 
@@ -21,11 +20,29 @@ export const ALL_LOCATIONS: Record<string, LocationDefinition> = {
   'data_center_europa': { id: 'data_center_europa', name: 'Europa Data Center', description: 'A major internet exchange point. Suspected node for Void\'s network. Frankfurt, Germany.', sceneType: 'datacenter', coords: { x: 51.5, y: 34 }, unlockedAt: 3.1 },
 };
 
+interface SacrificeChoice {
+    id: string;
+    text: string;
+    effect: string;
+    integrityCost: number;
+}
+
 export const ALL_CASES = [
   { id: 'CYB-001', title: 'Project Shadowfall', status: 'Active', summary: 'Investigating a series of cyberattacks against federal financial institutions. Traces point to a sophisticated actor known as "Void".', details: 'Initial breach vector identified as a zero-day exploit in enterprise VPN software. Data exfiltration focused on sensitive economic forecasts. Team is currently analyzing malware samples for attribution.' },
   { id: 'CYB-002', title: "Void's Origin", status: 'Locked', summary: 'A fragmented data packet recovered from a derelict warehouse terminal. Contains early writings and code snippets from "Void".', details: 'DATA FRAGMENT 1:\n"...they built this digital world as a cage. They control the flow of information, the very thoughts we are allowed to have. They call us criminals for seeking knowledge, for wanting to be free. But who is the real criminal? The one who opens a locked door, or the one who built the prison?\n\nThey took everything from me. My research, my name. They buried me in a digital grave. But they forgot one thing... ghosts can haunt the machine."\n\nANALYSIS: Subject displays a deep-seated grudge against a corporate or government entity. Suggests a personal motive beyond financial gain.', unlockedAt: 2 },
-  { id: 'CYB-003', title: "The Puppeteer's Network", status: 'Locked', summary: 'Data recovered from a Tokyo cyber cafe reveals a complex network topology. Void is using a distributed network to mask their true location.', details: 'DATA FRAGMENT 2:\n"This is my web. Each node a puppet, dancing on my strings. They chase my shadows across the globe, never realizing I am the one pulling."\n\n[ FURTHER DATA ENCRYPTED - REQUIRES FIREWALL BREACH ]', encryptedDetails: 'The network\'s central hub appears to be located in Europe. The reference to "their own backyard" combined with network traffic analysis points towards a major data hub in Frankfurt, Germany. Recommending field operation to investigate Europa Data Center.', isEncrypted: true, unlockedAt: 3 },
-  { id: 'CYB-004', title: 'The Ghost Protocol', status: 'Locked - CRITICAL', summary: 'Final message from Void. A choice must be made.', details: 'AGENT 77. YOU\'VE MADE IT. YOU\'VE SEEN THE TRUTH. NOW YOU HAVE A CHOICE.\n\nOPTION A: EXPOSE EVERYTHING. The corruption, the lies, the program that created me. The system will burn, but from the ashes, something new can grow. The world will know chaos, but it will be a world of truth. This is the path of sacrifice for a greater good.\n\nOPTION B: JOIN ME. Together, we can control the system from within. We can be the ghosts in the machine, manipulating events for what WE believe is right. Order will be maintained, but it will be our order. This is the path of control, of power.\n\nTHE CHOICE IS YOURS. THE PROTOCOL IS IN YOUR HANDS. WHAT WILL YOU SACRIFICE?', unlockedAt: 4 },
+  { id: 'CYB-003', title: "The Puppeteer's Network", status: 'Locked', summary: 'Data recovered from a Tokyo cyber cafe reveals a complex network topology. Void is using a distributed network to mask their true location.', details: 'DATA FRAGMENT 2:\n"This is my web. Each node a puppet, dancing on my strings. They chase my shadows across the globe, never realizing I am the one pulling."\n\n[ FURTHER DATA REQUIRES SACRIFICE TO DECRYPT ]', encryptedDetails: 'The network\'s central hub appears to be located in Europe. The reference to "their own backyard" combined with network traffic analysis points towards a major data hub in Frankfurt, Germany. Recommending field operation to investigate Europa Data Center.', isEncrypted: true, unlockedAt: 3, 
+    sacrificeToDecrypt: [
+        { id: 'INTEGRITY_MONITOR', text: 'Sacrifice the System Integrity Monitor.', effect: "Your system's health will be permanently hidden.", integrityCost: 5 },
+        { id: 'EVIDENCE_CACHE', text: 'Purge the Evidence Viewer Cache.', effect: 'The Evidence Viewer will become unstable and glitchy.', integrityCost: 10 },
+    ] as SacrificeChoice[]
+  },
+  { id: 'CYB-004', title: 'The Ghost Protocol', status: 'Locked - CRITICAL', summary: 'Final message from Void. A great sacrifice must be made to breach the final firewall.', details: 'You are at the final gateway. The Europa Data Center mainframe is protected by a quantum firewall. A brute force attack is impossible. To break through, you must sacrifice a part of your own system, permanently.', isEncrypted: true, unlockedAt: 3.2,
+    sacrificeToProceed: [
+        { id: 'COMMS_UPLINK', text: 'Sacrifice the Secure Comms Uplink.', effect: 'You will be cut off from Void forever.', integrityCost: 20 },
+        { id: 'OBJECTIVE_TRACKER', text: 'Sacrifice the Objective Tracker.', effect: 'You will receive no further mission guidance.', integrityCost: 15 },
+    ] as SacrificeChoice[],
+    encryptedDetails: 'AGENT 77. YOU\'VE MADE IT. YOU\'VE SACRIFICED. NOW YOU HAVE A CHOICE.\n\nOPTION A: EXPOSE EVERYTHING. The corruption, the lies, the program that created me. The system will burn, but from the ashes, something new can grow. The world will know chaos, but it will be a world of truth. This is the path of sacrifice for a greater good.\n\nOPTION B: JOIN ME. Together, we can control the system from within. We can be the ghosts in the machine, manipulating events for what WE believe is right. Order will be maintained, but it will be our order. This is the path of control, of power.\n\nTHE CHOICE IS YOURS. THE PROTOCOL IS IN YOUR HANDS. WHAT WILL YOU SACRIFICE?', 
+  },
 ];
 
 export const ALL_MESSAGES = [
@@ -51,8 +68,8 @@ export const ALL_MESSAGES = [
         { id: 'c1c', conversationId: 'c1', text: 'Who are "they"?', integrityChange: -5, storyProgressChange: 0.1 },
     ]},
     { sender: 'VOID', text: 'More breadcrumbs await where the sun rises. Look for the Net-Dive. Your move, Agent. - V', timestamp: '16:25', align: 'left', unlockedAt: 2.2, dependsOnChoice: 'c1' },
-    { sender: 'VOID', text: 'Persistent. But you\'re still missing the picture. Every truth is just a deeper lie. They lied to you. They lied about me.', timestamp: '18:15', align: 'left', unlockedAt: 3 },
-    { sender: 'VOID', text: 'Do you ever wonder what sacrifices were made to give you this comfortable life? This job? This sense of purpose? Ask yourself: are you the hero, or just the weapon?', timestamp: '18:16', align: 'left', unlockedAt: 3 },
+    { sender: 'VOID', text: 'Persistent. The Agency preaches sacrifice for the greater good, but it is always someone else\'s sacrifice. Never their own.', timestamp: '18:15', align: 'left', unlockedAt: 3 },
+    { sender: 'VOID', text: 'To find the real truth, sometimes you have to sacrifice a piece of yourself. Are you ready?', timestamp: '18:16', align: 'left', unlockedAt: 3 },
      { conversationId: 'c2', unlockedAt: 3, choices: [
         { id: 'c2a', conversationId: 'c2', text: 'I am an FBI agent. I serve my country.', integrityChange: 0, storyProgressChange: 0.1 },
         { id: 'c2b', conversationId: 'c2', text: 'What do you want from me?', integrityChange: -5, storyProgressChange: 0.1 },
@@ -61,37 +78,45 @@ export const ALL_MESSAGES = [
     { sender: 'VOID', text: 'The final piece is close to home. Their home. Find me in the heart of the machine: data_center_europa', timestamp: '18:18', align: 'left', unlockedAt: 3.1, dependsOnChoice: 'c2' },
 ] as const;
 
-export const CaseFilesApp: React.FC<AppContentProps> = ({ storyProgress: story = 0, onRiskyAction: risk, onChoice }) => {
+export const CaseFilesApp: React.FC<AppContentProps> = ({ storyProgress: story = 0, onChoice, onSacrifice, onAdvanceStory }) => {
   const files = useMemo(() => {
     return ALL_CASES.filter(f => !f.unlockedAt || story >= f.unlockedAt);
   }, [story]);
 
   const [file, setFile] = useState(files[0]);
   const [keys, setKeys] = useState<Record<string, boolean>>({});
-  const [text, setText] = useState<Record<string, string>>({});
-
-  const crack = (id: string) => {
-    playSound('ui_click');
-    if (!risk) return;
-    setText(p => ({...p, [id]: 'DECRYPTING...'}));
-    setTimeout(() => {
-        const ok = risk({ successChance: 0.65, integrityCostSuccess: 5, integrityCostFailure: 15 });
-        playSound(ok ? 'decryption_success' : 'decryption_fail');
-        if (ok) {
-            setKeys(p => ({ ...p, [id]: true }));
-            setText(p => ({...p, [id]: 'DECRYPTION SUCCESSFUL'}));
-        } else {
-            setText(p => ({...p, [id]: 'DECRYPTION FAILED: Anomaly Detected'}));
+  
+  const handleSacrifice = (choice: SacrificeChoice) => {
+    playSound('decryption_success');
+    onSacrifice?.(choice.id, choice.integrityCost);
+    if (file?.id) {
+        setKeys(p => ({ ...p, [file.id]: true }));
+        if (file.id === 'CYB-003') {
+            onAdvanceStory?.(0.1);
+        } else if (file.id === 'CYB-004') {
+            onAdvanceStory?.(0.8);
         }
-    }, 1500);
-  }
+    }
+  };
 
-  const open = file?.id ? keys[file.id] : false;
-
-  const handleChoice = (choice: ConversationChoice) => {
+  const handleFinalChoice = (choice: ConversationChoice) => {
     playSound('ui_click');
     onChoice?.(choice);
   };
+  
+  const renderSacrifice = (title: string, choices: SacrificeChoice[]) => (
+    <div className="mt-4 p-4 border border-dashed border-red-500/50 bg-red-900/20">
+        <h4 className="text-red-400 font-bold mb-3 text-xl">{title}</h4>
+        <div className="space-y-3">
+            {choices.map(choice => (
+                <button key={choice.id} onClick={() => handleSacrifice(choice)} className="w-full text-left bg-slate-700 hover:bg-red-800/70 p-3 rounded transition-colors">
+                    <p className="font-bold text-lg">{choice.text}</p>
+                    <p className="text-gray-400 text-base">{choice.effect}</p>
+                </button>
+            ))}
+        </div>
+    </div>
+  );
 
   return (
     <div className="h-full flex text-lg bg-black/20 text-cyan-300">
@@ -119,38 +144,34 @@ export const CaseFilesApp: React.FC<AppContentProps> = ({ storyProgress: story =
             <div className="mt-6">
               <h3 className="font-bold border-b border-cyan-700/50 pb-1 mb-2">DETAILS</h3>
               <p className="text-gray-300 whitespace-pre-wrap">{file.details}</p>
+
               {file.id === 'CYB-004' && onChoice && story >= 4 && (
-                <div className="mt-6 flex space-x-4">
-                  <button 
-                    onClick={() => handleChoice({ id: 'A', conversationId: 'final_choice', text: 'Expose Everything' })}
-                    className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-black font-bold py-3 px-4 rounded transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-400 text-xl"
-                  >
-                    EXPOSE EVERYTHING
-                  </button>
-                  <button 
-                    onClick={() => handleChoice({ id: 'B', conversationId: 'final_choice', text: 'Join Void' })}
-                    className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-400 text-xl"
-                  >
-                    JOIN VOID
-                  </button>
+                <div className="mt-6">
+                    <p className="text-gray-300 whitespace-pre-wrap mt-2">{file.encryptedDetails}</p>
+                    <div className="mt-6 flex space-x-4">
+                    <button 
+                        onClick={() => handleFinalChoice({ id: 'A', conversationId: 'final_choice', text: 'Expose Everything' })}
+                        className="flex-1 bg-cyan-600 hover:bg-cyan-500 text-black font-bold py-3 px-4 rounded transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-400 text-xl"
+                    >
+                        EXPOSE EVERYTHING
+                    </button>
+                    <button 
+                        onClick={() => handleFinalChoice({ id: 'B', conversationId: 'final_choice', text: 'Join Void' })}
+                        className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-400 text-xl"
+                    >
+                        JOIN VOID
+                    </button>
+                    </div>
                 </div>
               )}
-              {'isEncrypted' in file && file.isEncrypted && (
-                <div className="mt-4 p-4 border border-dashed border-red-500/50 bg-red-900/20">
-                  {open ? (
-                      <div>
-                          <p className="text-green-400 font-bold">[ DECRYPTION COMPLETE ]</p>
-                          <p className="text-gray-300 whitespace-pre-wrap mt-2">{'encryptedDetails' in file ? file.encryptedDetails : ''}</p>
-                      </div>
-                  ) : (
-                    <div>
-                      {text[file.id] ? (
-                        <p className={`font-bold animate-pulse ${text[file.id]?.includes('SUCCESS') ? 'text-green-400' : 'text-red-400'}`}>{text[file.id]}</p>
-                      ) : (
-                        <button onClick={() => crack(file.id)} className="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded transition-colors">ATTEMPT DECRYPTION</button>
-                      )}
-                    </div>
-                  )}
+
+              {file.isEncrypted && !keys[file.id] && file.sacrificeToDecrypt && renderSacrifice('CHOOSE SACRIFICE TO DECRYPT:', file.sacrificeToDecrypt)}
+              {file.isEncrypted && !keys[file.id] && file.sacrificeToProceed && renderSacrifice('CHOOSE SACRIFICE TO PROCEED:', file.sacrificeToProceed)}
+              
+              {file.isEncrypted && keys[file.id] && file.id !== 'CYB-004' && (
+                <div className="mt-4 p-4 border border-dashed border-green-500/50 bg-green-900/20">
+                    <p className="text-green-400 font-bold">[ DECRYPTION COMPLETE ]</p>
+                    <p className="text-gray-300 whitespace-pre-wrap mt-2">{file.encryptedDetails}</p>
                 </div>
               )}
             </div>
@@ -158,107 +179,6 @@ export const CaseFilesApp: React.FC<AppContentProps> = ({ storyProgress: story =
         ) : (
           <div className="flex items-center justify-center h-full">Select a case file to view details.</div>
         )}
-      </div>
-    </div>
-  );
-};
-
-export const TerminalApp: React.FC<AppContentProps> = ({ storyProgress: story = 0, onRiskyAction: risk, systemIntegrity: health, onRepairSystem: fix, onAdvanceStory: next }) => {
-  const [log, setLog] = useState<string[]>(['FBI Secure Terminal v3.1.4', 'Type "help" for a list of commands.']);
-  const [text, setText] = useState('');
-  const [busy, setBusy] = useState(false);
-  const end = useRef<HTMLDivElement>(null);
-
-  const help = () => {
-    let txt = 'Available commands: help, whoami, status, clear, ls, cat <file>, diagnostic, repair_core';
-    if (story >= 3.2) txt += ', breach <target>';
-    return txt;
-  }
-
-  const cmds: Record<string, string | (() => string)> = {
-    help: help,
-    whoami: 'user: AGENT_77\nauthorization: LEVEL 5 CLEARANCE',
-    status: 'System status: NOMINAL\nNetwork: SECURE_UPLINK_ESTABLISHED\nLast login: ' + new Date(Date.now() - 3600000).toLocaleString(),
-    clear: () => '',
-    ls: 'cases.log\nevidence_locker\nsecure_comms.dat',
-    'cat cases.log': 'CYB-001: ACTIVE\nCYB-002: LOCKED\nCYB-003: LOCKED',
-    'cat evidence_locker': 'Permission denied. Use Evidence Viewer application.',
-    'cat secure_comms.dat': 'File is encrypted.',
-  };
-  
-  useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth' }); }, [log]);
-
-  const add = useCallback((newLines: string[]) => { setLog(p => [...p, ...newLines]); }, []);
-
-  const run = (cmdStr: string) => {
-    add([`> ${cmdStr}`]);
-    const [cmd, ...args] = cmdStr.trim().toLowerCase().split(' ');
-    
-    if (cmd === 'clear') { setLog([]); return; }
-
-    if (cmd === 'breach' && story >= 3.2) {
-        const host = args[0];
-        if (host !== 'firewall_europa') { add(['Error: Invalid target. Valid target: firewall_europa']); return; }
-        if (!risk) return;
-        setBusy(true);
-        add(['Attempting firewall breach on target: firewall_europa...', 'Sacrificing system resources for elevated privileges...']);
-        setTimeout(() => {
-            const ok = risk({ successChance: 0.5, integrityCostFailure: 25, integrityCostSuccess: 15 });
-            if (ok) {
-                add(['>> BREACH SUCCESSFUL. Root access gained. Unlocking final case file...']);
-                setLog(p => [...p, '> Access CYB-004 for final instructions.']);
-                if (story < 4) next?.(4 - story);
-            } else {
-                add(['>> BREACH FAILED. Counter-intrusion detected! System integrity severely compromised.']);
-            }
-            setBusy(false);
-        }, 3000);
-    } else if (cmd === 'diagnostic') {
-        add([`Running system diagnostics...`, `Core Integrity: ${health}%`]);
-        if (health < 40) add(['CRITICAL DAMAGE DETECTED. IMMEDIATE REPAIR RECOMMENDED.']);
-        else if (health < 70) add(['WARNING: Minor data corruption detected.']);
-        else add(['System nominal. All systems green.']);
-    } else if (cmd === 'repair_core') {
-        if (!fix) return;
-        if (health === 100) { add(['System integrity is already at 100%. No repair needed.']); return; }
-        setBusy(true);
-        add(['Initializing core system repair sequence... This may cause temporary instability.']);
-        setTimeout(() => {
-            const gain = 25;
-            fix(gain);
-            add([`>> REPAIR COMPLETE. System integrity restored by ${gain}%.`]);
-            setBusy(false);
-        }, 2000);
-    } else if (cmdStr in cmds) {
-      const out = cmds[cmdStr];
-      const result = typeof out === 'function' ? out() : out;
-      add(result.split('\n'));
-    } else if (cmd === 'cat') {
-        add([`Error: File not found or access denied.`]);
-    } else {
-        add([`command not found: ${cmdStr}`]);
-    }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !busy) {
-        run(text);
-        setText('');
-    } else if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Space') {
-        playSound('terminal_keystroke', 0.4, true);
-    }
-  };
-
-  return (
-    <div className="h-full bg-black/90 p-2 text-green-400 text-lg flex flex-col" onClick={() => end.current?.parentElement?.querySelector('input')?.focus()}>
-      <div className="flex-grow overflow-y-auto">
-        {log.map((l, i) => (<div key={i} className="whitespace-pre-wrap">{l}</div>))}
-        {busy && <div className="animate-pulse">PROCESSING...</div>}
-        <div ref={end} />
-      </div>
-      <div className="flex items-center">
-        <span>&gt;</span>
-        <input type="text" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={handleKeyDown} className="bg-transparent border-none text-green-400 w-full focus:outline-none ml-2" autoFocus disabled={busy} />
       </div>
     </div>
   );
@@ -273,10 +193,13 @@ const evidence = [
   { id: 'EV-006', type: 'image', title: 'Facial Recognition Match', url: EVIDENCE_VIEWER_IMAGES.ev006 },
 ];
 
-export const EvidenceViewerApp: React.FC = () => {
+export const EvidenceViewerApp: React.FC<AppContentProps> = ({ sacrificedSystems = [] }) => {
   const [item, setItem] = useState(evidence[0]);
+  const isUnstable = sacrificedSystems.includes('EVIDENCE_CACHE');
+
   return (
-    <div className="h-full flex flex-col bg-black/30">
+    <div className="h-full flex flex-col bg-black/30 relative">
+      {isUnstable && <div className="absolute inset-0 scanline-overlay z-10 pointer-events-none" style={{ animationDuration: '1s', opacity: 0.5}} />}
       <div className="flex-grow flex">
         <div className="w-1/4 border-r border-cyan-700/50 overflow-y-auto">
           <div className="p-2 bg-slate-800 border-b border-cyan-700/50 font-bold text-cyan-300">EVIDENCE LOCKER</div>
@@ -289,13 +212,21 @@ export const EvidenceViewerApp: React.FC = () => {
             ))}
           </ul>
         </div>
-        <div className="w-3/4 p-4 flex items-center justify-center bg-black">
+        <div className={`w-3/4 p-4 flex items-center justify-center bg-black relative`}>
+          {isUnstable && <div className="absolute inset-0 glitch-bg z-20 pointer-events-none" />}
           {item && (<img src={item.url} alt={item.title} className="max-w-full max-h-full object-contain pixelated"/>)}
         </div>
       </div>
       <div className="h-12 bg-slate-800 border-t border-cyan-700/50 flex items-center px-4 text-lg">
         {item && (<p className="text-cyan-300 font-bold">Displaying: <span className="text-white">{item.id} - {item.title}</span></p>)}
+        {isUnstable && <p className="ml-auto text-red-500 font-bold animate-pulse">CACHE UNSTABLE</p>}
       </div>
+      <style>{`
+        @keyframes glitch-bg-anim {
+            0% { clip-path: inset(45% 0 56% 0); } 20% { clip-path: inset(5% 0 90% 0); } 40% { clip-path: inset(23% 0 33% 0); } 60% { clip-path: inset(80% 0 10% 0); } 80% { clip-path: inset(40% 0 45% 0); } 100% { clip-path: inset(50% 0 30% 0); }
+        }
+        .glitch-bg::after { content: ''; position: absolute; inset: 0; background: rgba(100,0,0,0.1); animation: glitch-bg-anim 3s infinite linear alternate-reverse; }
+      `}</style>
     </div>
   );
 };
@@ -337,14 +268,16 @@ const Choices: React.FC<{options: readonly ConversationChoice[], pick: (c: Conve
     );
 }
 
-export const SecureMessengerApp: React.FC<AppContentProps> = ({ storyProgress: story = 0, madeChoices: past = {}, onChoice: pick }) => {
+export const SecureMessengerApp: React.FC<AppContentProps> = ({ storyProgress: story = 0, madeChoices: past = {}, onChoice, sacrificedSystems = [] }) => {
   const end = useRef<HTMLDivElement>(null);
   const prevChatLength = useRef(0);
+  const commsOffline = sacrificedSystems.includes('COMMS_UPLINK');
 
   const chat = useMemo(() => {
     const list: (Message | { options: readonly ConversationChoice[], conversationId: string })[] = [];
     let done = true;
     for (const i of ALL_MESSAGES) {
+      if (commsOffline && i.sender === 'VOID' && 'unlockedAt' in i && i.unlockedAt > 3.2) continue;
       if ('unlockedAt' in i && i.unlockedAt && story < i.unlockedAt) continue;
       if ('choices' in i) {
         const picked = past[i.conversationId];
@@ -364,8 +297,11 @@ export const SecureMessengerApp: React.FC<AppContentProps> = ({ storyProgress: s
         if (done) list.push(i);
       }
     }
+    if (commsOffline) {
+        list.push({ sender: 'SYSTEM', text: '*** SECURE UPLINK SEVERED ***', timestamp: '', align: 'center', isGlitch: true });
+    }
     return list;
-  }, [story, past]);
+  }, [story, past, commsOffline]);
   
   useEffect(() => {
       const lastItem = chat.length > 0 ? chat[chat.length-1] : null;
@@ -384,13 +320,13 @@ export const SecureMessengerApp: React.FC<AppContentProps> = ({ storyProgress: s
       <div className="h-12 bg-slate-900 border-b border-cyan-700 flex items-center px-4"><h2 className="font-bold text-cyan-300">SECURE COMMS - CH: 7 (ENCRYPTED)</h2></div>
       <div className="flex-grow p-4 overflow-y-auto bg-slate-900/50">
         {chat.map((item, index) => {
-          if ('options' in item) return pick ? <Choices key={index} options={item.options} pick={pick} /> : null;
+          if ('options' in item) return onChoice ? <Choices key={index} options={item.options} pick={onChoice} /> : null;
           return <Bubble key={index} {...item} />;
         })}
         <div ref={end} />
       </div>
       <div className="h-16 bg-slate-900 border-t border-cyan-700 flex items-center p-2">
-        <input type="text" placeholder="Message transmission disabled..." disabled className="w-full bg-slate-700 rounded p-2 text-gray-400 focus:outline-none" />
+        <input type="text" placeholder={commsOffline ? 'CONNECTION TERMINATED' : "Message transmission disabled..."} disabled className="w-full bg-slate-700 rounded p-2 text-gray-400 focus:outline-none" />
         <button disabled className="ml-2 bg-cyan-700/50 text-white font-bold py-2 px-4 rounded cursor-not-allowed">SEND</button>
       </div>
     </div>

@@ -4,7 +4,6 @@ import { AppDefinition } from './types';
 import { NORMAL_APP_ICONS, FBI_APP_ICONS } from './assets';
 import {
     CaseFilesApp,
-    TerminalApp,
     EvidenceViewerApp,
     SecureMessengerApp,
     NotesApp,
@@ -68,13 +67,6 @@ export const FBI_APPS: AppDefinition[] = [
     defaultSize: { width: 700, height: 500 },
   },
   {
-    id: 'terminal',
-    name: 'Terminal',
-    icon: FBI_APP_ICONS.terminal,
-    component: TerminalApp,
-    defaultSize: { width: 600, height: 400 },
-  },
-  {
     id: 'evidence_viewer',
     name: 'Evidence Viewer',
     icon: FBI_APP_ICONS.evidence_viewer,
@@ -97,8 +89,8 @@ export const ALL_OBJECTIVES = [
     { text: "Good. You found the first piece. Now check your **Case Files** for the truth I unlocked.", requiredProgress: 2 },
     { text: "You have a new message. Open **Secure Messenger**.", requiredProgress: 2.1 },
     { text: "Time for your next move. I sent you a new location in **Secure Messenger**. Use the **World Map** to get there.", requiredProgress: 2.2 },
-    { text: "Another breadcrumb. Decrypt the file in **Case Files**.", requiredProgress: 3 },
+    { text: "Another breadcrumb. To decrypt the file, you must make a sacrifice in **Case Files**.", requiredProgress: 3 },
     { text: "The final piece is close. Travel to the **Europa Data Center** and connect to the core network.", requiredProgress: 3.1 },
-    { text: "Connection established. Return to your FBI OS and use command `breach firewall_europa` in the **Terminal**.", requiredProgress: 3.2 },
-    { text: "The system is ours. Access the final **Case File** and make your choice.", requiredProgress: 4 },
+    { text: "Connection established. The firewall is strong. A great sacrifice is needed to proceed. Go to the final **Case File**.", requiredProgress: 3.2 },
+    { text: "The system is yours. The final choice awaits in your **Case Files**.", requiredProgress: 4 },
 ];

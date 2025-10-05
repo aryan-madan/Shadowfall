@@ -6,7 +6,7 @@ interface IntroScreenProps {
   onFinish: () => void;
 }
 
-const introText = "I finally saved up enough for a new laptop. Found a great deal on eBay for a used one... The seller said it was completely wiped. I guess they missed a spot.";
+const introText = "Every choice is a sacrifice. I sacrificed my savings for this laptop. The seller sacrificed its secrets... or so they thought. Now, I have to wonder... what will I have to sacrifice to uncover the truth?";
 
 const IntroScreen: React.FC<IntroScreenProps> = ({ onFinish }) => {
   const [displayedText, setDisplayedText] = useState('');
