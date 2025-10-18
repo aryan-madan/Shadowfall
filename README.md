@@ -17,8 +17,6 @@ the assets were not at all ai, and were fully human made as we spent a lot of ti
 
 some code is still left from what we planned due to a shortage of time :(
 
-Welcome to Shadowfall, a narrative-driven virtual desktop environment where you step into the shoes of an FBI agent caught in a web of cyber-conspiracy. The game combines a realistic desktop simulation with top-down RPG exploration, creating a unique and immersive experience.
-
 ASSETS:
 https://limezu.itch.io/moderninteriors
 https://sscary.itch.io/the-adventurer-female
